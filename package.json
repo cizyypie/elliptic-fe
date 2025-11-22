@@ -12,6 +12,7 @@
     "@rainbow-me/rainbowkit": "^2.0.0",
     "@tanstack/react-query": "^5.0.0",
     "ethers": "^6.10.0",
+    "lucide-react": "^0.554.0",
     "qrcode.react": "^3.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
