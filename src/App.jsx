@@ -1,11 +1,9 @@
-// src/App.jsx
 import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Ticket, Calendar, MapPin, DollarSign, Plus, CheckCircle, XCircle, Search, Camera, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { BarcodeScannerComponent } from 'react-qr-barcode-scanner';
-
+import BarcodeScannerComponent from 'react-qr-barcode-scanner';
 // Import hooks
 import { 
   useGetEvents, 
@@ -31,7 +29,7 @@ function Header({ role, setRole }) {
       <div className="container mx-auto flex justify-between items-center flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <Ticket className="w-8 h-8" />
-          <h1 className="text-2xl font-bold">Ticket NFT System</h1>
+          <h1 className="text-2xl font-bold">Ellipticheck</h1>
         </div>
         
         <div className="flex items-center gap-4 flex-wrap">
@@ -155,7 +153,7 @@ function EventCard({ event, eventId, onBuyTicket, isPending }) {
 // ========================================
 function MyTicket({ ticket, tokenId, onShowQR }) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition">
+        <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition">
       <div className="flex justify-between items-start mb-3">
         <div>
           <h4 className="font-bold text-lg">Token #{tokenId}</h4>
