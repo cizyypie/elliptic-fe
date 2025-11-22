@@ -1,5 +1,5 @@
 // src/hooks/useContracts.js
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { usePublicClient, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import { useState, useEffect } from 'react';
 import { CONTRACTS } from '../contracts/addresses';
@@ -47,6 +47,19 @@ export function useGetEvents() {
     isLoading: event1.isLoading || event2.isLoading || event3.isLoading,
     error: event1.error || event2.error || event3.error
   };
+}
+
+// ========================================
+// HOOK: Get Contract Owner
+// ========================================
+export function useGetContractOwner() {
+  const { data: owner, isLoading, error } = useReadContract({
+    address: CONTRACTS.TICKET_NFT,
+    abi: TicketNFTABI,
+    functionName: 'owner',
+  });
+
+  return { owner, isLoading, error };
 }
 
 // ========================================
@@ -178,7 +191,7 @@ export function useTicketDetails(tokenId) {
 export function useVerifyAccess() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
 
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ 
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash 
   });
 
@@ -207,6 +220,66 @@ export function useVerifyAccess() {
     isSuccess,
     error,
     hash
+  };
+}
+
+// ========================================
+// HOOK: Verify Ticket & mark as used
+// ========================================
+export function useVerifyTicket() {
+  const publicClient = usePublicClient();
+  const { writeContract, data: hash, error, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash
+  });
+
+  const verifyTicket = async (ticketId) => {
+    if (!publicClient) {
+      return {
+        valid: false,
+        ticketId,
+        reason: 'Blockchain client not available',
+      };
+    }
+
+    try {
+      const ticket = await publicClient.readContract({
+        address: CONTRACTS.TICKET_NFT,
+        abi: TicketNFTABI,
+        functionName: 'getTicket',
+        args: [BigInt(ticketId)],
+      });
+
+      return {
+        valid: true,
+        ticketId,
+        ticket,
+      };
+    } catch (err) {
+      return {
+        valid: false,
+        ticketId,
+        reason: err?.shortMessage || err?.message || 'Ticket not found or invalid',
+      };
+    }
+  };
+
+  const markAsUsed = async (ticketId) => {
+    await writeContract({
+      address: CONTRACTS.TICKET_NFT,
+      abi: TicketNFTABI,
+      functionName: 'markTicketAsUsed',
+      args: [BigInt(ticketId)],
+    });
+  };
+
+  return {
+    verifyTicket,
+    markAsUsed,
+    isPending: isPending || isConfirming,
+    isSuccess,
+    error,
+    hash,
   };
 }
 
