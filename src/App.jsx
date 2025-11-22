@@ -4,7 +4,7 @@ import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Ticket, Calendar, MapPin, DollarSign, Plus, CheckCircle, XCircle, Search, Camera, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { BarcodeScannerComponent } from 'react-qr-barcode-scanner';
+import BarcodeScannerComponent from 'react-qr-barcode-scanner';
 
 // Import hooks
 import { 
