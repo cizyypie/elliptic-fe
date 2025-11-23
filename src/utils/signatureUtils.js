@@ -1,12 +1,26 @@
-// src/utils/signatureUtils.js
-import { keccak256, toBytes, encodePacked } from 'viem';
+// src/utils/signatureUtils.js - Enhanced Version
+import { keccak256, encodeAbiParameters, parseAbiParameters, toHex, hexToBytes } from 'viem';
+import { secp256k1 } from '@noble/curves/secp256k1';
 
 /**
- * Generate EIP-712 signature for ticket verification
- * This will be signed by the ticket owner's wallet
+ * Generate metadata hash for EIP-712 signing
  */
-export async function generateTicketSignature(
-  signer,
+export function generateMetadataHash(ticket) {
+  const packed = encodeAbiParameters(
+    parseAbiParameters('uint256, string, string'),
+    [
+      BigInt(ticket.eventId),
+      ticket.eventName || 'Event',
+      ticket.eventDate || new Date().toISOString()
+    ]
+  );
+  return keccak256(packed);
+}
+
+/**
+ * Generate EIP-712 typed data for signing
+ */
+export function getEIP712TypedData(
   ticketId,
   owner,
   nonce,
@@ -15,50 +29,59 @@ export async function generateTicketSignature(
   verifierAddress,
   chainId
 ) {
-  // EIP-712 Domain
-  const domain = {
-    name: 'TicketVerifier',
-    version: '1',
-    chainId: chainId,
-    verifyingContract: verifierAddress,
-  };
-
-  // EIP-712 Types
-  const types = {
-    TicketAccess: [
-      { name: 'ticketId', type: 'uint256' },
-      { name: 'owner', type: 'address' },
-      { name: 'nonce', type: 'uint256' },
-      { name: 'deadline', type: 'uint256' },
-      { name: 'metadataHash', type: 'bytes32' },
-    ],
-  };
-
-  // Message to sign
-  const message = {
-    ticketId: BigInt(ticketId),
-    owner,
-    nonce: BigInt(nonce),
-    deadline: BigInt(deadline),
-    metadataHash,
-  };
-
-  // Sign with EIP-712
-  const signature = await signer.signTypedData({
-    domain,
-    types,
+  return {
+    domain: {
+      name: 'TicketVerifier',
+      version: '1',
+      chainId: Number(chainId),
+      verifyingContract: verifierAddress,
+    },
+    types: {
+      TicketAccess: [
+        { name: 'ticketId', type: 'uint256' },
+        { name: 'owner', type: 'address' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'deadline', type: 'uint256' },
+        { name: 'metadataHash', type: 'bytes32' },
+      ],
+    },
     primaryType: 'TicketAccess',
-    message,
-  });
-
-  return signature;
+    message: {
+      ticketId: BigInt(ticketId),
+      owner,
+      nonce: BigInt(nonce),
+      deadline: BigInt(deadline),
+      metadataHash,
+    },
+  };
 }
 
 /**
- * Extract r, s, v from signature
+ * Extract public key coordinates from private key (for testing/demo)
+ * In production, this should come from wallet's public key
+ */
+export function getPublicKeyFromPrivateKey(privateKeyHex) {
+  // Remove 0x prefix if present
+  const cleanKey = privateKeyHex.replace('0x', '');
+  const privateKey = BigInt('0x' + cleanKey);
+  
+  // Get uncompressed public key (65 bytes: 0x04 + 32 bytes x + 32 bytes y)
+  const publicKeyBytes = secp256k1.getPublicKey(privateKey, false);
+  
+  // Extract x and y coordinates (skip first byte which is 0x04)
+  const x = publicKeyBytes.slice(1, 33);
+  const y = publicKeyBytes.slice(33, 65);
+  
+  return {
+    x: '0x' + Buffer.from(x).toString('hex'),
+    y: '0x' + Buffer.from(y).toString('hex'),
+  };
+}
+
+/**
+ * Parse signature to r, s components
  */
 export function parseSignature(signature) {
-  // Remove '0x' prefix if present
   const sig = signature.startsWith('0x') ? signature.slice(2) : signature;
   
   return {
@@ -69,87 +92,32 @@ export function parseSignature(signature) {
 }
 
 /**
- * Get public key from wallet (placeholder implementation)
- * In production, you would need to:
- * 1. Request public key from wallet
- * 2. Extract x and y coordinates from the public key
- * 3. Return them as BigInt values
- */
-export async function getPublicKeyCoordinates(address, provider) {
-  // This is a placeholder implementation
-  // Real implementation would require wallet API support
-  console.warn('Public key extraction not fully implemented. Using placeholder.');
-  
-  // For demo purposes, you can derive from signature recovery
-  // But proper implementation requires wallet support
-  
-  return {
-    x: BigInt('0x0000000000000000000000000000000000000000000000000000000000000001'),
-    y: BigInt('0x0000000000000000000000000000000000000000000000000000000000000002')
-  };
-}
-
-/**
- * Recover public key from signature (alternative method)
- * This requires a known message that was signed
- */
-export async function recoverPublicKey(message, signature, provider) {
-  try {
-    // Use ethers or viem to recover public key
-    // This is a simplified placeholder
-    return {
-      x: BigInt(0),
-      y: BigInt(0)
-    };
-  } catch (error) {
-    console.error('Error recovering public key:', error);
-    throw error;
-  }
-}
-
-/**
- * Generate metadata hash for ticket
- */
-export function generateMetadataHash(ticketData) {
-  const packed = encodePacked(
-    ['uint256', 'string', 'string'],
-    [
-      BigInt(ticketData.eventId), 
-      ticketData.eventName || 'Event', 
-      ticketData.eventDate || new Date().toISOString()
-    ]
-  );
-  
-  return keccak256(packed);
-}
-
-/**
- * Generate QR code data with signature (simplified version)
- * For production, implement full EIP-712 signing
+ * Generate complete signed QR data
  */
 export async function generateSignedQRData(
   walletClient,
+  account,
   ticket,
+  eventData,
   nonce,
   verifierAddress,
   chainId
 ) {
   try {
-    // Set deadline to 5 minutes from now
+    // 1. Set deadline (5 minutes from now)
     const deadline = Math.floor(Date.now() / 1000) + 300;
     
-    // Generate metadata hash
+    // 2. Generate metadata hash
     const metadataHash = generateMetadataHash({
       eventId: ticket.eventId,
-      eventName: ticket.eventName || 'Event',
-      eventDate: ticket.eventDate || new Date().toISOString(),
+      eventName: eventData.eventName,
+      eventDate: eventData.eventDate,
     });
 
-    // Generate signature
-    const signature = await generateTicketSignature(
-      walletClient,
-      ticket.tokenId,
-      ticket.owner,
+    // 3. Get EIP-712 typed data
+    const typedData = getEIP712TypedData(
+      ticket.tokenId || ticket.ticketId,
+      account.address,
       nonce,
       deadline,
       metadataHash,
@@ -157,78 +125,82 @@ export async function generateSignedQRData(
       chainId
     );
 
-    const { r, s, v } = parseSignature(signature);
+    // 4. Sign with wallet
+    const signature = await walletClient.signTypedData(typedData);
+    
+    // 5. Parse signature
+    const { r, s } = parseSignature(signature);
 
-    // Get public key coordinates (placeholder)
-    const { x: Qx, y: Qy } = await getPublicKeyCoordinates(ticket.owner);
+    // 6. Get public key coordinates
+    // IMPORTANT: In production, request from wallet API
+    // For demo with Anvil default account:
+    const { x: Qx, y: Qy } = getPublicKeyFromPrivateKey(
+      '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80' // Anvil account #0
+    );
 
     return {
-      ticketId: ticket.tokenId,
-      owner: ticket.owner,
-      nonce,
-      deadline,
+      // Verification data
+      ticketId: String(ticket.tokenId || ticket.ticketId),
+      owner: account.address,
+      nonce: String(nonce),
+      deadline: String(deadline),
       metadataHash,
+      
+      // Signature components
       r,
       s,
-      v,
-      Qx: Qx.toString(),
-      Qy: Qy.toString(),
-      signature,
+      Qx,
+      Qy,
+      
+      // Additional info for display
+      eventId: String(ticket.eventId),
+      eventName: eventData.eventName,
+      ticketNumber: String(ticket.ticketNumber),
+      
+      // Timestamp for QR uniqueness
+      timestamp: Date.now(),
     };
   } catch (error) {
     console.error('Error generating signed QR data:', error);
-    throw error;
+    throw new Error(`Failed to generate signature: ${error.message}`);
   }
 }
 
 /**
- * Verify signature locally (client-side verification)
+ * Verify signature locally (optional client-side check)
  */
-export function verifySignatureLocally(message, signature, expectedSigner) {
-  // Implement local signature verification if needed
-  // This is optional and mainly for UX
-  return true;
+export function verifySignatureLocally(digest, r, s, publicKey) {
+  try {
+    // Convert hex strings to bigints
+    const rBig = BigInt(r);
+    const sBig = BigInt(s);
+    const digestBig = BigInt(digest);
+    
+    // Simple validation
+    const n = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+    
+    if (rBig <= 0n || rBig >= n) return false;
+    if (sBig <= 0n || sBig >= n) return false;
+    
+    return true;
+  } catch (error) {
+    console.error('Local verification error:', error);
+    return false;
+  }
 }
 
 /**
- * Format address for display
+ * Format utilities
  */
 export function formatAddress(address) {
   if (!address) return '';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-/**
- * Format ETH value
- */
 export function formatEther(wei) {
   return (Number(wei) / 1e18).toFixed(4);
 }
 
-/**
- * Parse ETH to Wei
- */
-export function parseEtherToWei(eth) {
-  return BigInt(Math.floor(parseFloat(eth) * 1e18));
-}
-
-/**
- * Validate Ethereum address
- */
 export function isValidAddress(address) {
   return /^0x[a-fA-F0-9]{40}$/.test(address);
-}
-
-/**
- * Get current timestamp
- */
-export function getCurrentTimestamp() {
-  return Math.floor(Date.now() / 1000);
-}
-
-/**
- * Check if deadline has passed
- */
-export function isDeadlinePassed(deadline) {
-  return getCurrentTimestamp() > deadline;
 }

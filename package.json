@@ -19,7 +19,9 @@
     "react-qr-barcode-scanner": "^2.1.19",
     "viem": "^2.0.0",
     "wagmi": "^2.0.0",
-    "zustand": "^4.5.0"
+    "zustand": "^4.5.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",

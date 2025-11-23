@@ -3,63 +3,86 @@ import { usePublicClient, useReadContract, useWriteContract, useWaitForTransacti
 import { parseEther } from 'viem';
 import { useState, useEffect } from 'react';
 import { CONTRACTS } from '../contracts/addresses';
-import TicketNFTABI from '../contracts/TicketNFT.abi.json';
-import TicketVerifierABI from '../contracts/TicketVerifier.abi.json';
 
-// ========================================
-// HOOK: Get All Events
-// ========================================
-export function useGetEvents() {
-  const [events, setEvents] = useState([]);
-  
-  // Try to fetch first 5 events
-  const event1 = useReadContract({
-    address: CONTRACTS.TICKET_NFT,
-    abi: TicketNFTABI,
-    functionName: 'getEvent',
-    args: [BigInt(1)],
-  });
+// Import ABIs dengan proper handling
+import TicketNFTABIRaw from '../contracts/TicketNFT.abi.json';
+import TicketVerifierABIRaw from '../contracts/TicketVerifier.abi.json';
 
-  const event2 = useReadContract({
-    address: CONTRACTS.TICKET_NFT,
-    abi: TicketNFTABI,
-    functionName: 'getEvent',
-    args: [BigInt(2)],
-  });
+// Ensure ABI is array
+const TicketNFTABI = Array.isArray(TicketNFTABIRaw) ? TicketNFTABIRaw : TicketNFTABIRaw.abi || [];
+const TicketVerifierABI = Array.isArray(TicketVerifierABIRaw) ? TicketVerifierABIRaw : TicketVerifierABIRaw.abi || [];
 
-  const event3 = useReadContract({
-    address: CONTRACTS.TICKET_NFT,
-    abi: TicketNFTABI,
-    functionName: 'getEvent',
-    args: [BigInt(3)],
-  });
-
-  useEffect(() => {
-    const allEvents = [];
-    if (event1.data) allEvents.push(event1.data);
-    if (event2.data) allEvents.push(event2.data);
-    if (event3.data) allEvents.push(event3.data);
-    setEvents(allEvents);
-  }, [event1.data, event2.data, event3.data]);
-
-  return {
-    events,
-    isLoading: event1.isLoading || event2.isLoading || event3.isLoading,
-    error: event1.error || event2.error || event3.error
-  };
+// Validate ABIs
+if (!Array.isArray(TicketNFTABI) || TicketNFTABI.length === 0) {
+  console.error('❌ TicketNFT ABI is invalid or empty!');
 }
+if (!Array.isArray(TicketVerifierABI) || TicketVerifierABI.length === 0) {
+  console.error('❌ TicketVerifier ABI is invalid or empty!');
+}
+
+console.log('✅ ABIs loaded:', {
+  TicketNFT: TicketNFTABI.length + ' functions',
+  TicketVerifier: TicketVerifierABI.length + ' functions'
+});
 
 // ========================================
 // HOOK: Get Contract Owner
 // ========================================
 export function useGetContractOwner() {
-  const { data: owner, isLoading, error } = useReadContract({
+  const { data: owner, isLoading, error, isError } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
     abi: TicketNFTABI,
     functionName: 'owner',
   });
 
-  return { owner, isLoading, error };
+  // Debug log
+  useEffect(() => {
+    console.log('🔍 useGetContractOwner:', { 
+      owner, 
+      isLoading, 
+      error: error?.message,
+      isError,
+      contractAddress: CONTRACTS.TICKET_NFT 
+    });
+  }, [owner, isLoading, error, isError]);
+
+  return { 
+    owner: owner || null, 
+    isLoading, 
+    error: isError ? error : null 
+  };
+}
+
+// ========================================
+// HOOK: Get All Events (Max 10)
+// ========================================
+export function useGetEvents() {
+  const [events, setEvents] = useState([]);
+  
+  // Fetch multiple events
+  const eventQueries = Array.from({ length: 10 }, (_, i) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useReadContract({
+      address: CONTRACTS.TICKET_NFT,
+      abi: TicketNFTABI,
+      functionName: 'getEvent',
+      args: [BigInt(i + 1)],
+    });
+  });
+
+  useEffect(() => {
+    const validEvents = eventQueries
+      .map((query, index) => query.data ? { ...query.data, id: index + 1 } : null)
+      .filter(Boolean);
+    
+    setEvents(validEvents);
+  }, [eventQueries.map(q => q.data).join(',')]);
+
+  return {
+    events,
+    isLoading: eventQueries.some(q => q.isLoading),
+    error: eventQueries.find(q => q.error)?.error
+  };
 }
 
 // ========================================
@@ -67,10 +90,7 @@ export function useGetContractOwner() {
 // ========================================
 export function useCreateEvent() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ 
-    hash 
-  });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const createEvent = (eventData) => {
     writeContract({
@@ -97,14 +117,11 @@ export function useCreateEvent() {
 }
 
 // ========================================
-// HOOK: Mint Ticket (Buy ticket)
+// HOOK: Mint Ticket
 // ========================================
 export function useMintTicket() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ 
-    hash 
-  });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const mintTicket = (eventId, price, to) => {
     writeContract({
@@ -139,99 +156,62 @@ export function useMyTickets(address) {
     enabled: !!address,
   });
 
-  // Try to fetch tickets (simplified - in production use events/indexer)
-  const ticket1 = useReadContract({
-    address: CONTRACTS.TICKET_NFT,
-    abi: TicketNFTABI,
-    functionName: 'getTicket',
-    args: [BigInt(1)],
-    enabled: !!address && balance > 0,
+  // Fetch up to 20 tickets
+  const ticketQueries = Array.from({ length: 20 }, (_, i) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useReadContract({
+      address: CONTRACTS.TICKET_NFT,
+      abi: TicketNFTABI,
+      functionName: 'getTicket',
+      args: [BigInt(i + 1)],
+      enabled: !!address && !!balance && balance > 0,
+    });
   });
 
-  const ticket2 = useReadContract({
-    address: CONTRACTS.TICKET_NFT,
-    abi: TicketNFTABI,
-    functionName: 'getTicket',
-    args: [BigInt(2)],
-    enabled: !!address && balance > 1,
+  const ownerQueries = Array.from({ length: 20 }, (_, i) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useReadContract({
+      address: CONTRACTS.TICKET_NFT,
+      abi: TicketNFTABI,
+      functionName: 'ownerOf',
+      args: [BigInt(i + 1)],
+      enabled: !!address && !!balance && balance > 0,
+    });
   });
 
   useEffect(() => {
-    const allTickets = [];
-    if (ticket1.data) allTickets.push({ ...ticket1.data, tokenId: 1 });
-    if (ticket2.data) allTickets.push({ ...ticket2.data, tokenId: 2 });
-    setTickets(allTickets);
-  }, [ticket1.data, ticket2.data]);
+    if (!address || !balance) {
+      setTickets([]);
+      return;
+    }
+
+    const userTickets = ticketQueries
+      .map((query, index) => {
+        const owner = ownerQueries[index]?.data;
+        if (query.data && owner?.toLowerCase() === address.toLowerCase()) {
+          return { data: query.data, tokenId: index + 1 };
+        }
+        return null;
+      })
+      .filter(Boolean);
+    
+    setTickets(userTickets);
+  }, [address, balance, ticketQueries.map(q => q.data).join(','), ownerQueries.map(q => q.data).join(',')]);
 
   return {
     tickets,
-    isLoading: ticket1.isLoading || ticket2.isLoading,
+    isLoading: ticketQueries.some(q => q.isLoading) || ownerQueries.some(q => q.isLoading),
     balance: balance ? Number(balance) : 0
   };
 }
 
 // ========================================
-// HOOK: Get Ticket Details
-// ========================================
-export function useTicketDetails(tokenId) {
-  const { data: ticket, isLoading, error } = useReadContract({
-    address: CONTRACTS.TICKET_NFT,
-    abi: TicketNFTABI,
-    functionName: 'getTicket',
-    args: [BigInt(tokenId)],
-    enabled: !!tokenId,
-  });
-
-  return { ticket, isLoading, error };
-}
-
-// ========================================
-// HOOK: Verify Ticket Access
-// ========================================
-export function useVerifyAccess() {
-  const { writeContract, data: hash, error, isPending } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ 
-    hash 
-  });
-
-  const verifyAccess = async (verificationData) => {
-    writeContract({
-      address: CONTRACTS.TICKET_VERIFIER,
-      abi: TicketVerifierABI,
-      functionName: 'verifyAccess',
-      args: [
-        BigInt(verificationData.ticketId),
-        verificationData.owner,
-        BigInt(verificationData.nonce),
-        BigInt(verificationData.deadline),
-        verificationData.metadataHash,
-        BigInt(verificationData.r),
-        BigInt(verificationData.s),
-        BigInt(verificationData.Qx),
-        BigInt(verificationData.Qy)
-      ],
-    });
-  };
-
-  return {
-    verifyAccess,
-    isPending: isPending || isConfirming,
-    isSuccess,
-    error,
-    hash
-  };
-}
-
-// ========================================
-// HOOK: Verify Ticket & mark as used
+// HOOK: Verify Ticket & Mark as Used
 // ========================================
 export function useVerifyTicket() {
   const publicClient = usePublicClient();
   const { writeContract, data: hash, error, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash
-  });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const verifyTicket = async (ticketId) => {
     if (!publicClient) {
@@ -243,6 +223,7 @@ export function useVerifyTicket() {
     }
 
     try {
+      // Get ticket data
       const ticket = await publicClient.readContract({
         address: CONTRACTS.TICKET_NFT,
         abi: TicketNFTABI,
@@ -250,22 +231,31 @@ export function useVerifyTicket() {
         args: [BigInt(ticketId)],
       });
 
+      // Get ticket owner
+      const owner = await publicClient.readContract({
+        address: CONTRACTS.TICKET_NFT,
+        abi: TicketNFTABI,
+        functionName: 'ownerOf',
+        args: [BigInt(ticketId)],
+      });
+
       return {
         valid: true,
         ticketId,
         ticket,
+        owner,
       };
     } catch (err) {
       return {
         valid: false,
         ticketId,
-        reason: err?.shortMessage || err?.message || 'Ticket not found or invalid',
+        reason: 'Ticket not found or invalid',
       };
     }
   };
 
-  const markAsUsed = async (ticketId) => {
-    await writeContract({
+  const markAsUsed = (ticketId) => {
+    writeContract({
       address: CONTRACTS.TICKET_NFT,
       abi: TicketNFTABI,
       functionName: 'markTicketAsUsed',
@@ -281,36 +271,6 @@ export function useVerifyTicket() {
     error,
     hash,
   };
-}
-
-// ========================================
-// HOOK: Get Nonce
-// ========================================
-export function useGetNonce(address) {
-  const { data: nonce, isLoading } = useReadContract({
-    address: CONTRACTS.TICKET_VERIFIER,
-    abi: TicketVerifierABI,
-    functionName: 'getNonce',
-    args: [address],
-    enabled: !!address,
-  });
-
-  return { nonce: nonce ? Number(nonce) : 0, isLoading };
-}
-
-// ========================================
-// HOOK: Check if Ticket is Used
-// ========================================
-export function useIsTicketUsed(tokenId) {
-  const { data: isUsed, isLoading } = useReadContract({
-    address: CONTRACTS.TICKET_NFT,
-    abi: TicketNFTABI,
-    functionName: 'isTicketUsed',
-    args: [BigInt(tokenId)],
-    enabled: !!tokenId,
-  });
-
-  return { isUsed: !!isUsed, isLoading };
 }
 
 // ========================================
