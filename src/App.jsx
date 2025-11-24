@@ -1,6 +1,6 @@
 // src/App.jsx - Debug Version
 import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Ticket } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -12,6 +12,10 @@ import VerifierView from './components/VerifierView';
 
 // Import hooks
 import { useGetContractOwner } from './hooks/useContracts';
+import { CONTRACTS, CHAIN_ID } from './contracts/addresses';
+import TicketNFTABI from './contracts/TicketNFT.abi.json';
+import TicketVerifierABI from './contracts/TicketVerifier.abi.json';
+import { generateSignedQRData } from './utils/signatureUtils';
 
 // ========================================
 // DEBUG PANEL - Remove after fixing
@@ -117,15 +121,71 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
 // ========================================
 // QR CODE MODAL
 // ========================================
-function QRCodeModal({ ticket, onClose }) {
-  if (!ticket) return null;
+function QRCodeModal({ ticket, onClose, address }) {
+  const [qrPayload, setQrPayload] = useState(null);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const qrData = JSON.stringify({
-    ticketId: Number(ticket.tokenId),
-    eventId: Number(ticket.eventId),
-    ticketNumber: Number(ticket.ticketNumber),
-    timestamp: Date.now()
-  });
+  const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
+
+  useEffect(() => {
+    if (!ticket) return;
+
+    const generatePayload = async () => {
+      if (!walletClient || !address || !publicClient) {
+        setError('Wallet belum terkoneksi atau provider tidak tersedia');
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const eventId = BigInt(ticket.eventId);
+
+        const [eventData, nonce] = await Promise.all([
+          publicClient.readContract({
+            address: CONTRACTS.TICKET_NFT,
+            abi: TicketNFTABI,
+            functionName: 'getEvent',
+            args: [eventId]
+          }),
+          publicClient.readContract({
+            address: CONTRACTS.TICKET_VERIFIER,
+            abi: TicketVerifierABI,
+            functionName: 'nonces',
+            args: [address]
+          })
+        ]);
+
+        const signedData = await generateSignedQRData(
+          walletClient,
+          { address },
+          {
+            eventId,
+            ticketId: ticket.tokenId,
+            ticketNumber: ticket.ticketNumber
+          },
+          eventData,
+          nonce,
+          CONTRACTS.TICKET_VERIFIER,
+          CHAIN_ID
+        );
+
+        setQrPayload(signedData);
+      } catch (err) {
+        console.error('Failed to generate QR data:', err);
+        setError(err.message || 'Gagal membuat QR code');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    generatePayload();
+  }, [ticket, walletClient, address, publicClient]);
+
+  if (!ticket) return null;
 
   return (
     <div 
@@ -138,23 +198,42 @@ function QRCodeModal({ ticket, onClose }) {
       >
         <h2 className="text-2xl font-bold mb-4 text-center">QR Code Tiket</h2>
         
-        <div className="bg-gray-100 p-6 rounded-xl mb-4 flex justify-center">
-          <QRCodeSVG 
-            value={qrData}
-            size={280}
-            level="H"
-            includeMargin={true}
-          />
-        </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm text-center">
+            {error}
+          </div>
+        )}
 
-        <div className="text-center mb-4">
-          <p className="font-semibold text-lg">Token #{ticket.tokenId}</p>
-          <p className="text-gray-600">Event #{Number(ticket.eventId)}</p>
-          <p className="text-gray-600">Tiket #{Number(ticket.ticketNumber)}</p>
-          <p className="text-sm text-gray-500 mt-3 mb-1">
-            🎫 Tunjukkan QR code ini saat masuk venue
-          </p>
-        </div>
+        {isLoading ? (
+          <div className="bg-gray-100 p-6 rounded-xl mb-4 flex flex-col items-center gap-3 text-gray-600">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-600 border-t-transparent"></div>
+            <p>Membuat signature ECDSA untuk tiket Anda...</p>
+          </div>
+        ) : qrPayload ? (
+          <>
+            <div className="bg-gray-100 p-6 rounded-xl mb-4 flex justify-center">
+              <QRCodeSVG
+                value={JSON.stringify(qrPayload)}
+                size={280}
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+
+            <div className="text-center mb-4">
+              <p className="font-semibold text-lg">Token #{ticket.tokenId}</p>
+              <p className="text-gray-600">Event #{Number(ticket.eventId)}</p>
+              <p className="text-gray-600">Tiket #{Number(ticket.ticketNumber)}</p>
+              <p className="text-sm text-gray-500 mt-3 mb-1">
+                🔐 QR ini sudah dilengkapi signature ECDSA (EIP-712)
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg mb-4 text-sm text-center">
+            QR code belum siap. Pastikan wallet Anda terhubung.
+          </div>
+        )}
 
         <button
           onClick={onClose}
@@ -295,8 +374,9 @@ export default function App() {
 
       {/* QR Code Modal */}
       {selectedTicket && (
-        <QRCodeModal 
+        <QRCodeModal
           ticket={selectedTicket}
+          address={address}
           onClose={() => setSelectedTicket(null)}
         />
       )}

@@ -213,37 +213,147 @@ export function useVerifyTicket() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const verifyTicket = async (ticketId) => {
+  const verifyTicket = async (ticketPayload) => {
     if (!publicClient) {
       return {
         valid: false,
-        ticketId,
+        ticketId: ticketPayload?.ticketId,
         reason: 'Blockchain client not available',
       };
     }
 
-    try {
-      // Get ticket data
-      const ticket = await publicClient.readContract({
-        address: CONTRACTS.TICKET_NFT,
-        abi: TicketNFTABI,
-        functionName: 'getTicket',
-        args: [BigInt(ticketId)],
-      });
+    if (!ticketPayload || typeof ticketPayload !== 'object') {
+      return {
+        valid: false,
+        ticketId: ticketPayload?.ticketId,
+        reason: 'QR data tidak lengkap. Gunakan QR resmi dengan signature.',
+      };
+    }
 
-      // Get ticket owner
-      const owner = await publicClient.readContract({
-        address: CONTRACTS.TICKET_NFT,
-        abi: TicketNFTABI,
-        functionName: 'ownerOf',
-        args: [BigInt(ticketId)],
-      });
+    const {
+      ticketId,
+      owner,
+      nonce,
+      deadline,
+      metadataHash,
+      r,
+      s,
+      Qx,
+      Qy,
+    } = ticketPayload;
+
+    if (!ticketId || !owner || !nonce || !deadline || !metadataHash || !r || !s || !Qx || !Qy) {
+      return {
+        valid: false,
+        ticketId,
+        reason: 'Data signature ECDSA tidak lengkap',
+      };
+    }
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (nowSeconds > Number(deadline)) {
+      return {
+        valid: false,
+        ticketId,
+        reason: 'Signature sudah kedaluwarsa',
+      };
+    }
+
+    try {
+      const [ticket, currentOwner, isUsed, currentNonce] = await Promise.all([
+        publicClient.readContract({
+          address: CONTRACTS.TICKET_NFT,
+          abi: TicketNFTABI,
+          functionName: 'getTicket',
+          args: [BigInt(ticketId)],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.TICKET_NFT,
+          abi: TicketNFTABI,
+          functionName: 'ownerOf',
+          args: [BigInt(ticketId)],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.TICKET_NFT,
+          abi: TicketNFTABI,
+          functionName: 'isTicketUsed',
+          args: [BigInt(ticketId)],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.TICKET_VERIFIER,
+          abi: TicketVerifierABI,
+          functionName: 'nonces',
+          args: [owner],
+        })
+      ]);
+
+      if (currentOwner.toLowerCase() !== owner.toLowerCase()) {
+        return {
+          valid: false,
+          ticketId,
+          ticket,
+          owner: currentOwner,
+          reason: 'Pemilik tiket tidak sesuai dengan signature',
+        };
+      }
+
+      if (isUsed) {
+        return {
+          valid: false,
+          ticketId,
+          ticket,
+          owner: currentOwner,
+          reason: 'Tiket sudah digunakan sebelumnya',
+        };
+      }
+
+      if (BigInt(nonce) < BigInt(currentNonce)) {
+        return {
+          valid: false,
+          ticketId,
+          ticket,
+          owner: currentOwner,
+          reason: 'Nonce sudah dipakai (kemungkinan replay)',
+        };
+      }
+
+      try {
+        await publicClient.simulateContract({
+          address: CONTRACTS.TICKET_VERIFIER,
+          abi: TicketVerifierABI,
+          functionName: 'verifyAccess',
+          args: [
+            {
+              ticketId: BigInt(ticketId),
+              owner,
+              nonce: BigInt(nonce),
+              deadline: BigInt(deadline),
+              metadataHash,
+            },
+            {
+              r: BigInt(r),
+              s: BigInt(s),
+              Qx: BigInt(Qx),
+              Qy: BigInt(Qy),
+            }
+          ],
+          account: owner,
+        });
+      } catch (err) {
+        return {
+          valid: false,
+          ticketId,
+          ticket,
+          owner: currentOwner,
+          reason: err.shortMessage || 'Signature tidak valid',
+        };
+      }
 
       return {
         valid: true,
         ticketId,
         ticket,
-        owner,
+        owner: currentOwner,
       };
     } catch (err) {
       return {
