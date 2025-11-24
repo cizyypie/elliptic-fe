@@ -14,7 +14,7 @@ function QRScanner({ onScanSuccess }) {
     if (result) {
       try {
         const ticketData = JSON.parse(result.text);
-        onScanSuccess(ticketData.ticketId);
+        onScanSuccess(ticketData);
         setScanning(false);
         setScanError(null);
       } catch (error) {
@@ -26,7 +26,7 @@ function QRScanner({ onScanSuccess }) {
 
   const handleManualVerify = () => {
     if (manualInput) {
-      onScanSuccess(parseInt(manualInput));
+      onScanSuccess({ ticketId: parseInt(manualInput, 10) });
       setManualInput('');
     }
   };
@@ -203,15 +203,15 @@ export default function VerifierView() {
   const [verificationResult, setVerificationResult] = useState(null);
   const { verifyTicket, markAsUsed, isPending } = useVerifyTicket();
 
-  const handleVerifyTicket = async (ticketId) => {
+  const handleVerifyTicket = async (ticketPayload) => {
     try {
-      const result = await verifyTicket(ticketId);
+      const result = await verifyTicket(ticketPayload);
       setVerificationResult(result);
     } catch (error) {
       console.error('Error verifying ticket:', error);
       setVerificationResult({
         valid: false,
-        ticketId,
+        ticketId: ticketPayload?.ticketId,
         reason: 'Error: ' + error.message
       });
     }
