@@ -120,23 +120,37 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
 function QRCodeModal({ ticket, onClose }) {
   if (!ticket) return null;
 
-  const qrData = JSON.stringify({
-    ticketId: Number(ticket.tokenId),
-    eventId: Number(ticket.eventId),
-    ticketNumber: Number(ticket.ticketNumber),
+  // ✅ NEW: Use complete signed data if available
+  const qrData = ticket.r && ticket.s ? JSON.stringify({
+    // Signature verification data
+    ticketId: ticket.ticketId,
+    owner: ticket.owner,
+    deadline: ticket.deadline,
+    metadataHash: ticket.metadataHash,
+    r: ticket.r,
+    s: ticket.s,
+    Qx: ticket.Qx,
+    Qy: ticket.Qy,
+    
+    // Display data
+    eventId: ticket.eventId,
+    eventName: ticket.eventName,
+    ticketNumber: ticket.ticketNumber,
+    timestamp: ticket.timestamp
+  }) : JSON.stringify({
+    // Fallback for unsigned (old format)
+    ticketId: ticket.tokenId || ticket.ticketId,
+    eventId: ticket.eventId,
+    ticketNumber: ticket.ticketNumber,
     timestamp: Date.now()
   });
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div 
-        className="bg-white rounded-2xl p-8 max-w-md w-full"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-2xl font-bold mb-4 text-center">QR Code Tiket</h2>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full">
+        <h2 className="text-2xl font-bold mb-4 text-center">
+          {ticket.r ? '🔐 Signed QR Code' : '⚠️ Unsigned QR Code'}
+        </h2>
         
         <div className="bg-gray-100 p-6 rounded-xl mb-4 flex justify-center">
           <QRCodeSVG 
@@ -147,13 +161,30 @@ function QRCodeModal({ ticket, onClose }) {
           />
         </div>
 
+        {/* ✅ NEW: Show signature status */}
+        {ticket.r && ticket.s ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-green-800">
+              ✅ Cryptographically signed and secure
+            </p>
+            <p className="text-xs text-green-600 mt-1">
+              Valid until: {new Date(Number(ticket.deadline) * 1000).toLocaleString()}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-yellow-800">
+              ⚠️ Not cryptographically signed - for display only
+            </p>
+          </div>
+        )}
+
         <div className="text-center mb-4">
-          <p className="font-semibold text-lg">Token #{ticket.tokenId}</p>
-          <p className="text-gray-600">Event #{Number(ticket.eventId)}</p>
-          <p className="text-gray-600">Tiket #{Number(ticket.ticketNumber)}</p>
-          <p className="text-sm text-gray-500 mt-3 mb-1">
-            🎫 Tunjukkan QR code ini saat masuk venue
+          <p className="font-semibold text-lg">
+            Token #{ticket.tokenId || ticket.ticketId}
           </p>
+          <p className="text-gray-600">Event #{ticket.eventId}</p>
+          <p className="text-gray-600">Tiket #{ticket.ticketNumber}</p>
         </div>
 
         <button

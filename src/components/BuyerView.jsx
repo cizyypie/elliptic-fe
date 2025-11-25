@@ -1,6 +1,10 @@
-// src/components/BuyerView.jsx
+// src/components/BuyerView.jsx - FULLY FIXED VERSION
+import { useState } from 'react';
 import { Calendar, MapPin, DollarSign, Ticket } from 'lucide-react';
+import { useWalletClient, usePublicClient } from 'wagmi';
 import { useGetEvents, useMintTicket, useMyTickets, useEventTicketCount } from '../hooks/useContracts';
+import { generateSignedQRData } from '../utils/signatureUtils';
+import { CONTRACTS } from '../contracts/addresses';
 
 // Event Card Component
 function EventCard({ event, eventId, onBuyTicket, isPending }) {
@@ -68,7 +72,7 @@ function EventCard({ event, eventId, onBuyTicket, isPending }) {
 }
 
 // My Ticket Component
-function MyTicket({ ticket, tokenId, onShowQR }) {
+function MyTicket({ ticket, tokenId, onShowQR, isGenerating }) {
   return (
     <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition">
       <div className="flex justify-between items-start mb-3">
@@ -85,15 +89,22 @@ function MyTicket({ ticket, tokenId, onShowQR }) {
       </div>
       
       <button
-        onClick={() => onShowQR({ ...ticket, tokenId })}
-        disabled={ticket.isUsed}
+        onClick={onShowQR}
+        disabled={ticket.isUsed || isGenerating}
         className={`w-full py-2 rounded-lg font-semibold transition ${
-          ticket.isUsed
+          ticket.isUsed || isGenerating
             ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
             : 'bg-indigo-600 text-white hover:bg-indigo-700'
         }`}
       >
-        Tampilkan QR Code
+        {isGenerating ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+            Generating...
+          </span>
+        ) : (
+          'Tampilkan QR Code'
+        )}
       </button>
     </div>
   );
@@ -101,6 +112,10 @@ function MyTicket({ ticket, tokenId, onShowQR }) {
 
 // Main Buyer View
 export default function BuyerView({ address, isConnected, onShowQR }) {
+  const [generatingQR, setGeneratingQR] = useState(null);
+  
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
   const { events } = useGetEvents();
   const { tickets } = useMyTickets(address);
   const { mintTicket, isPending: isMinting } = useMintTicket();
@@ -118,6 +133,67 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
     } catch (error) {
       console.error('Error buying ticket:', error);
       alert('Gagal membeli tiket: ' + (error.message || 'Unknown error'));
+    }
+  };
+
+  // ✅ NEW: Handle QR generation with signature
+  const handleShowQR = async (ticket) => {
+    if (!walletClient || !address) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    setGeneratingQR(ticket.tokenId);
+
+    try {
+      // Find event data for this ticket
+      const eventData = events.find(e => Number(e.id) === Number(ticket.eventId));
+      
+      if (!eventData) {
+        alert('Event data not found. Please refresh the page.');
+        setGeneratingQR(null);
+        return;
+      }
+
+      console.log('🔐 Generating signature for ticket:', {
+        tokenId: ticket.tokenId,
+        eventId: ticket.eventId,
+        owner: address
+      });
+
+      // Generate signed QR data with signature
+      const signedData = await generateSignedQRData(
+        walletClient,
+        { address },
+        {
+          tokenId: ticket.tokenId,
+          eventId: ticket.eventId,
+          ticketNumber: ticket.ticketNumber,
+        },
+        {
+          eventName: eventData.eventName,
+          eventDate: eventData.eventDate,
+        },
+        0, // nonce not used in deadline-based architecture
+        CONTRACTS.TICKET_VERIFIER,
+        31337 // chainId - match your network
+      );
+
+      console.log('✅ Signature generated successfully:', {
+        ticketId: signedData.ticketId,
+        deadline: new Date(Number(signedData.deadline) * 1000).toLocaleString(),
+        hasSignature: !!(signedData.r && signedData.s),
+        hasPublicKey: !!(signedData.Qx && signedData.Qy)
+      });
+
+      // Pass complete signed data to QR modal
+      onShowQR(signedData);
+      
+    } catch (error) {
+      console.error('❌ Signature generation failed:', error);
+      alert(`Failed to generate secure QR code: ${error.message}\n\nPlease try again or check console for details.`);
+    } finally {
+      setGeneratingQR(null);
     }
   };
 
@@ -141,7 +217,8 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
                 key={ticket.tokenId} 
                 ticket={ticket.data}
                 tokenId={ticket.tokenId}
-                onShowQR={onShowQR}
+                onShowQR={() => handleShowQR({ ...ticket.data, tokenId: ticket.tokenId })}
+                isGenerating={generatingQR === ticket.tokenId}
               />
             ))}
           </div>

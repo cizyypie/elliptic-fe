@@ -9,19 +9,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
     "@rainbow-me/rainbowkit": "^2.0.0",
     "@tanstack/react-query": "^5.0.0",
+    "buffer": "^6.0.3",
     "ethers": "^6.10.0",
     "lucide-react": "^0.554.0",
-    "qrcode.react": "^3.1.0",
+    "qrcode.react": "^3.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-qr-barcode-scanner": "^2.1.19",
-    "viem": "^2.0.0",
-    "wagmi": "^2.0.0",
-    "zustand": "^4.5.0",
-    "@noble/curves": "^1.9.7",
-    "@noble/hashes": "^1.8.0"
+    "viem": "^2.40.0",
+    "wagmi": "^2.19.5",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
