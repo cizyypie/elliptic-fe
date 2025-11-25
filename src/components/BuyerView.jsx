@@ -174,8 +174,7 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
           eventName: eventData.eventName,
           eventDate: eventData.eventDate,
         },
-        0, // nonce not used in deadline-based architecture
-        CONTRACTS.TICKET_VERIFIER,
+      CONTRACTS.TICKET_VERIFIER,
         31337 // chainId - match your network
       );
 

@@ -151,12 +151,13 @@ function QRCodeModal({ ticket, onClose }) {
         <h2 className="text-2xl font-bold mb-4 text-center">
           {ticket.r ? '🔐 Signed QR Code' : '⚠️ Unsigned QR Code'}
         </h2>
-        
-        <div className="bg-gray-100 p-6 rounded-xl mb-4 flex justify-center">
+         <div className="bg-white p-8 rounded-xl mb-4 flex justify-center">
           <QRCodeSVG 
             value={qrData}
             size={280}
-            level="H"
+            level="L"
+            bgColor="#FFFFFF"
+            fgColor="#000000"
             includeMargin={true}
           />
         </div>

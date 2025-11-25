@@ -1,5 +1,5 @@
-// src/utils/signatureUtils.js - FULLY FIXED VERSION
-import { keccak256, encodeAbiParameters, parseAbiParameters, hexToBytes } from 'viem';
+// src/utils/signatureUtils.js - FIXED: Public Key Extraction
+import { keccak256, encodeAbiParameters, parseAbiParameters, hexToBytes, toBytes } from 'viem';
 import { secp256k1 } from '@noble/curves/secp256k1';
 
 /**
@@ -23,7 +23,6 @@ export function generateMetadataHash(ticket) {
 export function getEIP712TypedData(
   ticketId,
   owner,
-  nonce, // kept for compatibility but not used in deadline architecture
   deadline,
   metadataHash,
   verifierAddress,
@@ -68,40 +67,64 @@ export function parseSignature(signature) {
 }
 
 /**
- * ✅ FIXED: Extract public key from signature recovery
- * This works for ANY wallet, not just test accounts
+ * Helper: Convert base64 to hex (browser-compatible)
+ */
+function base64ToHex(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * Helper: Uint8Array to hex string (browser-compatible)
+ */
+function bytesToHex(bytes) {
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * ✅ FIXED: Extract public key from signature recovery (NO HARDCODED KEYS, BROWSER-COMPATIBLE)
  */
 export async function getPublicKeyFromSignature(walletClient, account) {
   try {
+    console.log('🔐 Attempting to extract public key from wallet...');
+    
     // Method 1: Try eth_getEncryptionPublicKey (MetaMask)
     try {
+      console.log('Method 1: Trying eth_getEncryptionPublicKey...');
       const encryptionKey = await walletClient.request({
         method: 'eth_getEncryptionPublicKey',
         params: [account.address],
       });
       
-      // This returns base64 encoded public key, need to convert
-      console.log('Got encryption public key from wallet');
-      
-      // Decode and extract coordinates
-      const publicKeyBytes = Buffer.from(encryptionKey, 'base64');
+      // Decode base64 public key (browser-compatible)
+      const publicKeyHex = base64ToHex(encryptionKey);
+      const publicKeyBytes = hexToBytes('0x' + publicKeyHex);
       
       // Public key is 65 bytes: 0x04 + 32 bytes x + 32 bytes y
       if (publicKeyBytes.length === 65 && publicKeyBytes[0] === 0x04) {
-        const x = '0x' + publicKeyBytes.slice(1, 33).toString('hex');
-        const y = '0x' + publicKeyBytes.slice(33, 65).toString('hex');
+        const x = '0x' + bytesToHex(publicKeyBytes.slice(1, 33));
+        const y = '0x' + bytesToHex(publicKeyBytes.slice(33, 65));
+        console.log('✅ Got public key from eth_getEncryptionPublicKey');
         return { x, y };
       }
     } catch (e) {
-      console.log('eth_getEncryptionPublicKey not supported, using recovery method');
+      console.log('Method 1 failed:', e.message);
     }
     
-    // Method 2: Recover from a known signature
-    console.log('🔑 Using signature recovery method for public key...');
+    // Method 2: ✅ FIXED Recovery from signature (WORKS FOR ANY WALLET)
+    console.log('Method 2: Using signature recovery (universal method)...');
     
     const message = 'Ellipticheck Public Key Request';
     
-    // Sign a message
+    // Sign a simple message
     const signature = await walletClient.signMessage({
       account,
       message,
@@ -109,54 +132,105 @@ export async function getPublicKeyFromSignature(walletClient, account) {
     
     console.log('✅ Message signed, recovering public key...');
     
-    // Recover public key using secp256k1
-    const messageHash = keccak256(
-      encodeAbiParameters(
-        parseAbiParameters('string'),
-        [`\x19Ethereum Signed Message:\n${message.length}${message}`]
-      )
-    );
+    // Create proper Ethereum signed message hash
+    const prefix = `\x19Ethereum Signed Message:\n${message.length}`;
+    const prefixedMessage = prefix + message;
+    const messageHash = keccak256(toBytes(prefixedMessage));
     
+    console.log('Message hash:', messageHash);
+    
+    // Parse signature
     const sig = parseSignature(signature);
+    console.log('Signature parsed:', { 
+      r: sig.r.slice(0, 10) + '...', 
+      s: sig.s.slice(0, 10) + '...', 
+      v: sig.v 
+    });
     
-    // Calculate recovery ID (v - 27)
-    const recoveryId = sig.v - 27;
+    // Calculate recovery ID (v - 27 for legacy, handle EIP-155)
+    let recoveryId = sig.v >= 35 ? ((sig.v - 35) % 2) : (sig.v - 27);
     
-    // Recover public key
-    const publicKey = secp256k1.Signature.fromCompact(
-      (sig.r + sig.s.slice(2))
-    ).addRecoveryBit(recoveryId).recoverPublicKey(
-      messageHash.slice(2)
-    ).toRawBytes(false);
+    console.log('Recovery ID:', recoveryId);
     
-    // Extract coordinates (skip first byte 0x04)
-    const x = '0x' + Buffer.from(publicKey.slice(1, 33)).toString('hex');
-    const y = '0x' + Buffer.from(publicKey.slice(33, 65)).toString('hex');
+    // Create signature bytes (r + s)
+    const rBytes = hexToBytes(sig.r);
+    const sBytes = hexToBytes(sig.s);
+    const sigBytes = new Uint8Array(64);
+    sigBytes.set(rBytes, 0);
+    sigBytes.set(sBytes, 32);
     
-    console.log('✅ Public key recovered successfully');
+    // Recover public key using secp256k1
+    const messageHashBytes = hexToBytes(messageHash);
     
-    return { x, y };
-    
-  } catch (error) {
-    console.error('Failed to get public key:', error);
-    
-    // Method 3: Fallback for development - use deterministic derivation
-    // ⚠️ THIS ONLY WORKS FOR ANVIL TEST ACCOUNTS
-    console.warn('⚠️ Using fallback public key derivation - THIS ONLY WORKS FOR TEST ACCOUNTS');
-    
-    // For Anvil account #0
-    if (account.address.toLowerCase() === '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'.toLowerCase()) {
-      return getPublicKeyFromPrivateKey('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80');
+    // Try both recovery IDs (0 and 1)
+    for (let i = 0; i < 2; i++) {
+      try {
+        const testRecoveryId = (recoveryId + i) % 2;
+        console.log(`Trying recovery ID ${testRecoveryId}...`);
+        
+        const signatureObj = secp256k1.Signature.fromCompact(sigBytes);
+        const publicKeyBytes = signatureObj.addRecoveryBit(testRecoveryId)
+          .recoverPublicKey(messageHashBytes)
+          .toRawBytes(false);
+        
+        // Verify this is the correct public key by checking address
+        const x = publicKeyBytes.slice(1, 33);
+        const y = publicKeyBytes.slice(33, 65);
+        
+        // Compute address from public key
+        const publicKeyHash = keccak256(new Uint8Array([...x, ...y]));
+        const recoveredAddress = '0x' + publicKeyHash.slice(-40);
+        
+        console.log('Recovered address:', recoveredAddress);
+        console.log('Expected address:', account.address.toLowerCase());
+        
+        if (recoveredAddress.toLowerCase() === account.address.toLowerCase()) {
+          const xHex = '0x' + bytesToHex(x);
+          const yHex = '0x' + bytesToHex(y);
+          
+          console.log('✅ Public key recovered successfully!');
+          console.log('Qx:', xHex.slice(0, 10) + '...');
+          console.log('Qy:', yHex.slice(0, 10) + '...');
+          
+          return { x: xHex, y: yHex };
+        }
+      } catch (err) {
+        console.log(`Recovery attempt ${i} failed:`, err.message);
+      }
     }
     
-    throw new Error('Could not extract public key from wallet. Please use a compatible wallet (MetaMask, Rainbow, etc.)');
+    throw new Error('Could not recover correct public key from signature');
+    
+  } catch (error) {
+    console.error('❌ All methods failed:', error);
+    
+    throw new Error(
+      'Failed to extract public key from wallet.\n\n' +
+      'This can happen if:\n' +
+      '1. Your wallet is not connected properly\n' +
+      '2. You rejected the signature request\n' +
+      '3. Your wallet does not support message signing\n\n' +
+      'Supported wallets:\n' +
+      '- MetaMask\n' +
+      '- Rainbow Wallet\n' +
+      '- Trust Wallet\n' +
+      '- WalletConnect compatible wallets\n\n' +
+      'Please try:\n' +
+      '1. Reconnecting your wallet\n' +
+      '2. Refreshing the page\n' +
+      '3. Using a different wallet\n\n' +
+      'Technical details: ' + error.message
+    );
   }
 }
 
 /**
  * Extract public key coordinates from private key (ONLY FOR TESTING)
+ * ⚠️ DEPRECATED: Not used in production - kept for reference only
  */
 export function getPublicKeyFromPrivateKey(privateKeyHex) {
+  console.warn('⚠️ getPublicKeyFromPrivateKey is deprecated and should not be used');
+  
   const cleanKey = privateKeyHex.replace('0x', '');
   const privateKeyBytes = hexToBytes('0x' + cleanKey);
   
@@ -168,25 +242,24 @@ export function getPublicKeyFromPrivateKey(privateKeyHex) {
   const y = publicKeyBytes.slice(33, 65);
   
   return {
-    x: '0x' + Buffer.from(x).toString('hex'),
-    y: '0x' + Buffer.from(y).toString('hex'),
+    x: '0x' + bytesToHex(x),
+    y: '0x' + bytesToHex(y),
   };
 }
 
 /**
- * ✅ FIXED: Generate complete signed QR data with dynamic public key
+ * ✅ Generate complete signed QR data with dynamic public key
  */
 export async function generateSignedQRData(
   walletClient,
   account,
   ticket,
   eventData,
-  nonce, // kept for compatibility but ignored
-  verifierAddress,
-  chainId
+  verifier,
+  chain
 ) {
   try {
-    console.log('📝 Generating signed QR data...', {
+    console.log('🎫 Generating signed QR data...', {
       ticketId: ticket.tokenId || ticket.ticketId,
       owner: account.address,
       event: eventData.eventName
@@ -202,17 +275,16 @@ export async function generateSignedQRData(
       eventName: eventData.eventName,
       eventDate: eventData.eventDate,
     });
-    console.log('🔐 Metadata hash generated:', metadataHash);
+    console.log('📝 Metadata hash generated:', metadataHash);
 
     // 3. Get EIP-712 typed data
     const typedData = getEIP712TypedData(
       ticket.tokenId || ticket.ticketId,
       account.address,
-      0, // nonce not used in deadline architecture
       deadline,
       metadataHash,
-      verifierAddress,
-      chainId
+      verifier,
+      chain
     );
     
     console.log('📄 EIP-712 typed data prepared');
@@ -230,7 +302,7 @@ export async function generateSignedQRData(
       v 
     });
 
-    // 6. ✅ FIX: Get public key dynamically from wallet
+    // 6. ✅ Get public key dynamically from wallet
     console.log('🔑 Extracting public key from wallet...');
     const { x: Qx, y: Qy } = await getPublicKeyFromSignature(walletClient, account);
     console.log('✅ Public key extracted:', { 
@@ -282,7 +354,7 @@ export function verifySignatureLocally(digest, r, s, publicKey) {
     const HALF_N = BigInt('0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0');
     
     if (rBig <= 0n || rBig >= n) return false;
-    if (sBig <= 0n || sBig > HALF_N) return false; // Malleability check
+    if (sBig <= 0n || sBig > HALF_N) return false;
     
     return true;
   } catch (error) {

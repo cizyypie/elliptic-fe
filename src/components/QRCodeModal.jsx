@@ -134,7 +134,6 @@ export default function QRScanner({ onVerificationResult }) {
           {
             ticketId: BigInt(qrData.ticketId),
             owner: qrData.owner,
-            nonce: BigInt(qrData.nonce),
             deadline: BigInt(qrData.deadline),
             metadataHash: qrData.metadataHash,
           },
@@ -164,9 +163,6 @@ export default function QRScanner({ onVerificationResult }) {
       } else if (error.message?.includes('InvalidPublicKey')) {
         errorType = 'invalid_pubkey';
         errorMsg = '🔑 Invalid Public Key';
-      } else if (error.message?.includes('InvalidNonce')) {
-        errorType = 'invalid_nonce';
-        errorMsg = '🔢 Invalid Nonce';
       }
 
       onVerificationResult({
