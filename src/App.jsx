@@ -13,9 +13,7 @@ import VerifierView from './components/VerifierView';
 // Import hooks
 import { useGetContractOwner } from './hooks/useContracts';
 
-// ========================================
 // DEBUG PANEL - Remove after fixing
-// ========================================
 function DebugPanel({ address, owner, isOrganizer }) {
   return (
     <div className="bg-gray-900 text-white p-4 rounded-lg mb-4 font-mono text-xs">
@@ -33,9 +31,7 @@ function DebugPanel({ address, owner, isOrganizer }) {
   );
 }
 
-// ========================================
 // HEADER COMPONENT
-// ========================================
 function Header({ role, setRole, address, owner, isOrganizer }) {
   return (
     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 shadow-lg">
@@ -114,9 +110,7 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
   );
 }
 
-// ========================================
 // QR CODE MODAL
-// ========================================
 function QRCodeModal({ ticket, onClose }) {
   if (!ticket) return null;
 
@@ -199,9 +193,7 @@ function QRCodeModal({ ticket, onClose }) {
   );
 }
 
-// ========================================
 // MAIN APP COMPONENT
-// ========================================
 export default function App() {
   const [role, setRole] = useState('buyer');
   const [selectedTicket, setSelectedTicket] = useState(null);

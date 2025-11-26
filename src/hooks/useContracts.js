@@ -25,9 +25,7 @@ console.log('✅ ABIs loaded:', {
   TicketVerifier: TicketVerifierABI.length + ' functions'
 });
 
-// ========================================
 // HOOK: Get Contract Owner
-// ========================================
 export function useGetContractOwner() {
   const { data: owner, isLoading, error, isError } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
@@ -53,41 +51,28 @@ export function useGetContractOwner() {
   };
 }
 
-// ========================================
 // HOOK: Get All Events (Max 10)
-// ========================================
 export function useGetEvents() {
-  const [events, setEvents] = useState([]);
-  
-  // Fetch multiple events
-  const eventQueries = Array.from({ length: 10 }, (_, i) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useReadContract({
-      address: CONTRACTS.TICKET_NFT,
-      abi: TicketNFTABI,
-      functionName: 'getEvent',
-      args: [BigInt(i + 1)],
-    });
+  const { data: eventsData, isLoading, error, refetch } = useReadContract({
+    address: CONTRACTS.TICKET_NFT,
+    abi: TicketNFTABI,
+    functionName: 'getAllEvents', // If this function exists in your contract
   });
 
-  useEffect(() => {
-    const validEvents = eventQueries
-      .map((query, index) => query.data ? { ...query.data, id: index + 1 } : null)
-      .filter(Boolean);
-    
-    setEvents(validEvents);
-  }, [eventQueries.map(q => q.data).join(',')]);
+  const events = eventsData?.map((event, index) => ({
+    ...event,
+    id: index + 1,
+  })) || [];
 
   return {
     events,
-    isLoading: eventQueries.some(q => q.isLoading),
-    error: eventQueries.find(q => q.error)?.error
+    isLoading,
+    error,
+    refetch,
   };
 }
 
-// ========================================
 // HOOK: Create Event (Organizer only)
-// ========================================
 export function useCreateEvent() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -116,9 +101,7 @@ export function useCreateEvent() {
   };
 }
 
-// ========================================
 // HOOK: Mint Ticket
-// ========================================
 export function useMintTicket() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -142,9 +125,7 @@ export function useMintTicket() {
   };
 }
 
-// ========================================
 // HOOK: Get User's Tickets
-// ========================================
 export function useMyTickets(address) {
   const [tickets, setTickets] = useState([]);
   
@@ -205,9 +186,7 @@ export function useMyTickets(address) {
   };
 }
 
-// ========================================
 // HOOK: Verify Ticket & Mark as Used
-// ========================================
 export function useVerifyTicket() {
   const publicClient = usePublicClient();
   const { writeContract, data: hash, error, isPending } = useWriteContract();
@@ -273,9 +252,7 @@ export function useVerifyTicket() {
   };
 }
 
-// ========================================
 // HOOK: Get Event Ticket Count
-// ========================================
 export function useEventTicketCount(eventId) {
   const { data: count, isLoading } = useReadContract({
     address: CONTRACTS.TICKET_NFT,

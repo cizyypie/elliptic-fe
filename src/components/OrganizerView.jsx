@@ -1,12 +1,16 @@
-// src/components/OrganizerView.jsx
-import { useState, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
-import { useGetEvents, useCreateEvent, useEventTicketCount } from '../hooks/useContracts';
+// src/components/OrganizerView.jsx - FIXED VERSION
+import { useState, useEffect } from "react";
+import { Plus, X, RefreshCw } from "lucide-react";
+import {
+  useGetEvents,
+  useCreateEvent,
+  useEventTicketCount,
+} from "../hooks/useContracts";
 
 // Event Summary Card
 function EventSummaryCard({ event, eventId }) {
   const { count: soldCount } = useEventTicketCount(eventId);
-  
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex justify-between items-start mb-4">
@@ -15,24 +19,34 @@ function EventSummaryCard({ event, eventId }) {
           <p className="text-gray-600 text-sm mb-1">📅 {event.eventDate}</p>
           <p className="text-gray-600 text-sm">📍 {event.eventLocation}</p>
         </div>
-        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-          event.isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'
-        }`}>
-          {event.isActive ? 'Aktif' : 'Nonaktif'}
+        <span
+          className={`px-3 py-1 rounded-full text-sm font-semibold ${
+            event.isActive
+              ? "bg-green-100 text-green-600"
+              : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {event.isActive ? "Aktif" : "Nonaktif"}
         </span>
       </div>
       <div className="pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-center">
         <div>
           <p className="text-gray-600 text-sm">Harga</p>
-          <p className="font-bold">{(Number(event.price) / 1e18).toFixed(4)} ETH</p>
+          <p className="font-bold">
+            {(Number(event.price) / 1e18).toFixed(4)} ETH
+          </p>
         </div>
         <div>
           <p className="text-gray-600 text-sm">Terjual</p>
-          <p className="font-bold">{soldCount}/{Number(event.totalSupply)}</p>
+          <p className="font-bold">
+            {soldCount}/{Number(event.totalSupply)}
+          </p>
         </div>
         <div>
           <p className="text-gray-600 text-sm">Revenue</p>
-          <p className="font-bold">{((soldCount * Number(event.price)) / 1e18).toFixed(4)} ETH</p>
+          <p className="font-bold">
+            {((soldCount * Number(event.price)) / 1e18).toFixed(4)} ETH
+          </p>
         </div>
       </div>
     </div>
@@ -42,18 +56,24 @@ function EventSummaryCard({ event, eventId }) {
 // Create Event Form
 function CreateEventForm({ onClose, onCreate, isPending }) {
   const [formData, setFormData] = useState({
-    name: '',
-    date: '',
-    location: '',
-    price: '',
-    totalSupply: ''
+    name: "",
+    date: "",
+    location: "",
+    price: "",
+    totalSupply: "",
   });
 
   const handleSubmit = () => {
-    if (formData.name && formData.date && formData.location && formData.price && formData.totalSupply) {
+    if (
+      formData.name &&
+      formData.date &&
+      formData.location &&
+      formData.price &&
+      formData.totalSupply
+    ) {
       onCreate(formData);
     } else {
-      alert('Harap isi semua field');
+      alert("Harap isi semua field");
     }
   };
 
@@ -61,14 +81,11 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
     <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-bold">Form Event Baru</h3>
-        <button 
-          onClick={onClose} 
-          className="text-gray-500 hover:text-gray-700"
-        >
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
           <X className="w-6 h-6" />
         </button>
       </div>
-      
+
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -76,9 +93,9 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
           </label>
           <input
             type="text"
-            placeholder="Contoh: Konser Musik Rock 2024"
+            placeholder="Contoh: Konser Musik Rock 2025"
             value={formData.name}
-            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
           />
         </div>
@@ -90,7 +107,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
           <input
             type="date"
             value={formData.date}
-            onChange={(e) => setFormData({...formData, date: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
           />
         </div>
@@ -103,7 +120,9 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             type="text"
             placeholder="Contoh: Jakarta Convention Center"
             value={formData.location}
-            onChange={(e) => setFormData({...formData, location: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, location: e.target.value })
+            }
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
           />
         </div>
@@ -116,7 +135,9 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             type="text"
             placeholder="Contoh: 0.1"
             value={formData.price}
-            onChange={(e) => setFormData({...formData, price: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, price: e.target.value })
+            }
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
           />
         </div>
@@ -129,7 +150,9 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             type="number"
             placeholder="Contoh: 100"
             value={formData.totalSupply}
-            onChange={(e) => setFormData({...formData, totalSupply: e.target.value})}
+            onChange={(e) =>
+              setFormData({ ...formData, totalSupply: e.target.value })
+            }
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
           />
         </div>
@@ -140,7 +163,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             disabled={isPending}
             className="flex-1 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
           >
-            {isPending ? 'Membuat...' : 'Buat Event'}
+            {isPending ? "Membuat..." : "Buat Event"}
           </button>
           <button
             onClick={onClose}
@@ -154,21 +177,37 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
   );
 }
 
-// Main Organizer View
+// Main Organizer View - FIXED
 export default function OrganizerView() {
   const [showForm, setShowForm] = useState(false);
-  const { events, isLoading } = useGetEvents();
-  const { createEvent, isPending, isSuccess } = useCreateEvent();
+  const { events, isLoading, refetch } = useGetEvents();
+  const { createEvent, isPending, isSuccess, hash } = useCreateEvent();
 
+  // ✅ FIXED: Wait for transaction confirmation before refetching
   useEffect(() => {
-    if (isSuccess) {
-      setShowForm(false);
-      alert('Event berhasil dibuat! ✅');
+    if (isSuccess && hash) {
+      console.log('✅ Event created successfully! Hash:', hash);
+      
+      // Wait a bit for blockchain to update, then refetch
+      const timer = setTimeout(() => {
+        console.log('🔄 Refetching events...');
+        refetch();
+        setShowForm(false);
+        alert("Event berhasil dibuat! ✅");
+      }, 2000); // Wait 2 seconds for blockchain confirmation
+
+      return () => clearTimeout(timer);
     }
-  }, [isSuccess]);
+  }, [isSuccess, hash, refetch]);
 
   const handleCreateEvent = (formData) => {
+    console.log('📝 Creating event with data:', formData);
     createEvent(formData);
+  };
+
+  const handleManualRefresh = () => {
+    console.log('🔄 Manual refresh triggered');
+    refetch();
   };
 
   return (
@@ -176,22 +215,35 @@ export default function OrganizerView() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Event Management</h2>
-          <p className="text-gray-600 text-sm mt-1">Kelola event dan monitor penjualan tiket</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Kelola event dan monitor penjualan tiket
+          </p>
         </div>
-        
-        {!showForm && (
+
+        <div className="flex gap-2">
+          {/* Manual Refresh Button */}
           <button
-            onClick={() => setShowForm(true)}
-            className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 flex items-center gap-2 transition"
+            onClick={handleManualRefresh}
+            className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-semibold hover:bg-gray-300 flex items-center gap-2 transition"
+            title="Refresh events"
           >
-            <Plus className="w-5 h-5" />
-            Buat Event Baru
+            <RefreshCw className="w-5 h-5" />
           </button>
-        )}
+
+          {!showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 flex items-center gap-2 transition"
+            >
+              <Plus className="w-5 h-5" />
+              Buat Event Baru
+            </button>
+          )}
+        </div>
       </div>
 
       {showForm && (
-        <CreateEventForm 
+        <CreateEventForm
           onClose={() => setShowForm(false)}
           onCreate={handleCreateEvent}
           isPending={isPending}
@@ -207,16 +259,14 @@ export default function OrganizerView() {
         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <div className="text-6xl mb-4">🎪</div>
           <p className="text-gray-600 text-lg font-medium">Belum ada event</p>
-          <p className="text-gray-500 text-sm mt-2">Buat event pertama Anda untuk memulai!</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Buat event pertama Anda untuk memulai!
+          </p>
         </div>
       ) : (
         <div className="grid gap-4">
           {events.map((event) => (
-            <EventSummaryCard 
-              key={event.id} 
-              event={event} 
-              eventId={event.id} 
-            />
+            <EventSummaryCard key={event.id} event={event} eventId={event.id} />
           ))}
         </div>
       )}
