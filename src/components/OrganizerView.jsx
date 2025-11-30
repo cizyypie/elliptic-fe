@@ -233,7 +233,7 @@ export default function OrganizerView() {
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 flex items-center gap-2 transition"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-500 flex items-center gap-2 transition"
             >
               <Plus className="w-5 h-5" />
               Buat Event Baru

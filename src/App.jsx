@@ -34,7 +34,7 @@ function DebugPanel({ address, owner, isOrganizer }) {
 // HEADER COMPONENT
 function Header({ role, setRole, address, owner, isOrganizer }) {
   return (
-    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 shadow-lg">
+    <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
       <div className="container mx-auto">
         <div className="flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-3">
@@ -114,57 +114,42 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
 function QRCodeModal({ ticket, onClose }) {
   if (!ticket) return null;
 
-  // ✅ NEW: Use complete signed data if available
-  const qrData = ticket.r && ticket.s ? JSON.stringify({
-    // Signature verification data
-    ticketId: ticket.ticketId,
-    owner: ticket.owner,
-    deadline: ticket.deadline,
-    metadataHash: ticket.metadataHash,
-    r: ticket.r,
-    s: ticket.s,
-    Qx: ticket.Qx,
-    Qy: ticket.Qy,
-    
-    // Display data
-    eventId: ticket.eventId,
-    eventName: ticket.eventName,
-    ticketNumber: ticket.ticketNumber,
-    timestamp: ticket.timestamp
-  }) : JSON.stringify({
-    // Fallback for unsigned (old format)
-    ticketId: ticket.tokenId || ticket.ticketId,
-    eventId: ticket.eventId,
-    ticketNumber: ticket.ticketNumber,
-    timestamp: Date.now()
-  });
+  // ⬅️ ticket sekarang = { qrPayload, displayInfo }
+  const { qrPayload, displayInfo } = ticket;
+
+  const isSigned = qrPayload && qrPayload.r && qrPayload.s;
+
+  // QR hanya berisi payload pendek
+  const qrData = JSON.stringify(qrPayload || {});
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-8 max-w-md w-full">
         <h2 className="text-2xl font-bold mb-4 text-center">
-          {ticket.r ? '🔐 Signed QR Code' : '⚠️ Unsigned QR Code'}
+          {isSigned ? '🔐 Signed QR Code' : '⚠️ Unsigned QR Code'}
         </h2>
-         <div className="bg-white p-8 rounded-xl mb-4 flex justify-center">
+
+        <div className="bg-white p-8 rounded-xl mb-4 flex justify-center">
           <QRCodeSVG 
             value={qrData}
-            size={280}
-            level="L"
+            size={320}
+            level="M"
             bgColor="#FFFFFF"
             fgColor="#000000"
             includeMargin={true}
           />
         </div>
 
-        {/* ✅ NEW: Show signature status */}
-        {ticket.r && ticket.s ? (
+        {isSigned ? (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
             <p className="text-sm text-green-800">
               ✅ Cryptographically signed and secure
             </p>
-            <p className="text-xs text-green-600 mt-1">
-              Valid until: {new Date(Number(ticket.deadline) * 1000).toLocaleString()}
-            </p>
+            {displayInfo?.deadline && (
+              <p className="text-xs text-green-600 mt-1">
+                Valid until: {new Date(Number(displayInfo.deadline) * 1000).toLocaleString()}
+              </p>
+            )}
           </div>
         ) : (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
@@ -176,10 +161,10 @@ function QRCodeModal({ ticket, onClose }) {
 
         <div className="text-center mb-4">
           <p className="font-semibold text-lg">
-            Token #{ticket.tokenId || ticket.ticketId}
+            Token #{displayInfo?.tokenId}
           </p>
-          <p className="text-gray-600">Event #{ticket.eventId}</p>
-          <p className="text-gray-600">Tiket #{ticket.ticketNumber}</p>
+          <p className="text-gray-600">Event #{displayInfo?.eventId}</p>
+          <p className="text-gray-600">Tiket #{displayInfo?.ticketNumber}</p>
         </div>
 
         <button
@@ -192,6 +177,8 @@ function QRCodeModal({ ticket, onClose }) {
     </div>
   );
 }
+
+
 
 // MAIN APP COMPONENT
 export default function App() {
@@ -239,14 +226,14 @@ export default function App() {
       />
 
       <main className="container mx-auto px-4 py-8">
-        {/* DEBUG PANEL - Remove after fixing */}
+        {/* DEBUG PANEL - Remove after fixing
         {isConnected && (
           <DebugPanel 
             address={address}
             owner={owner}
             isOrganizer={isOrganizer}
           />
-        )}
+        )} */}
 
         {/* Connection Warning */}
         {!isConnected && (
