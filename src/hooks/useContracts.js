@@ -1,24 +1,14 @@
-// src/hooks/useContracts.js
+// src/hooks/useContracts.js - FIXED VERSION
 import { usePublicClient, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import { useState, useEffect } from 'react';
 import { CONTRACTS } from '../contracts/addresses';
 
-// Import ABIs dengan proper handling
 import TicketNFTABIRaw from '../contracts/TicketNFT.abi.json';
 import TicketVerifierABIRaw from '../contracts/TicketVerifier.abi.json';
 
-// Ensure ABI is array
 const TicketNFTABI = Array.isArray(TicketNFTABIRaw) ? TicketNFTABIRaw : TicketNFTABIRaw.abi || [];
 const TicketVerifierABI = Array.isArray(TicketVerifierABIRaw) ? TicketVerifierABIRaw : TicketVerifierABIRaw.abi || [];
-
-// Validate ABIs
-if (!Array.isArray(TicketNFTABI) || TicketNFTABI.length === 0) {
-  console.error('❌ TicketNFT ABI is invalid or empty!');
-}
-if (!Array.isArray(TicketVerifierABI) || TicketVerifierABI.length === 0) {
-  console.error('❌ TicketVerifier ABI is invalid or empty!');
-}
 
 console.log('✅ ABIs loaded:', {
   TicketNFT: TicketNFTABI.length + ' functions',
@@ -33,7 +23,6 @@ export function useGetContractOwner() {
     functionName: 'owner',
   });
 
-  // Debug log
   useEffect(() => {
     console.log('🔍 useGetContractOwner:', { 
       owner, 
@@ -51,12 +40,12 @@ export function useGetContractOwner() {
   };
 }
 
-// HOOK: Get All Events (Max 10)
+// HOOK: Get All Events
 export function useGetEvents() {
   const { data: eventsData, isLoading, error, refetch } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
     abi: TicketNFTABI,
-    functionName: 'getAllEvents', // If this function exists in your contract
+    functionName: 'getAllEvents',
   });
 
   const events = eventsData?.map((event, index) => ({
@@ -107,6 +96,7 @@ export function useMintTicket() {
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const mintTicket = (eventId, price, to) => {
+    console.log('🎫 Minting ticket:', { eventId, price, to });
     writeContract({
       address: CONTRACTS.TICKET_NFT,
       abi: TicketNFTABI,
@@ -125,11 +115,13 @@ export function useMintTicket() {
   };
 }
 
-// HOOK: Get User's Tickets
+// ✅ FIXED: Get User's Tickets - Proper implementation
 export function useMyTickets(address) {
+  const publicClient = usePublicClient();
   const [tickets, setTickets] = useState([]);
-  
-  const { data: balance } = useReadContract({
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { data: balance, isLoading: balanceLoading } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
     abi: TicketNFTABI,
     functionName: 'balanceOf',
@@ -137,51 +129,86 @@ export function useMyTickets(address) {
     enabled: !!address,
   });
 
-  // Fetch up to 20 tickets
-  const ticketQueries = Array.from({ length: 20 }, (_, i) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useReadContract({
-      address: CONTRACTS.TICKET_NFT,
-      abi: TicketNFTABI,
-      functionName: 'getTicket',
-      args: [BigInt(i + 1)],
-      enabled: !!address && !!balance && balance > 0,
-    });
-  });
-
-  const ownerQueries = Array.from({ length: 20 }, (_, i) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    return useReadContract({
-      address: CONTRACTS.TICKET_NFT,
-      abi: TicketNFTABI,
-      functionName: 'ownerOf',
-      args: [BigInt(i + 1)],
-      enabled: !!address && !!balance && balance > 0,
-    });
+  const { data: totalTokens } = useReadContract({
+    address: CONTRACTS.TICKET_NFT,
+    abi: TicketNFTABI,
+    functionName: 'tokenCounter',
+    enabled: !!address,
   });
 
   useEffect(() => {
-    if (!address || !balance) {
-      setTickets([]);
-      return;
+    async function fetchTickets() {
+      if (!address || !publicClient || !balance || balance === 0n) {
+        setTickets([]);
+        return;
+      }
+
+      setIsLoading(true);
+      const userTickets = [];
+
+      try {
+        const maxTokenId = totalTokens ? Number(totalTokens) : 100;
+        
+        console.log(`🔍 Scanning for tickets owned by ${address}...`);
+        console.log(`   Total minted tokens: ${maxTokenId}`);
+        console.log(`   User balance: ${balance}`);
+
+        // Scan all minted tokens
+        for (let tokenId = 1; tokenId <= maxTokenId; tokenId++) {
+          try {
+            // Check owner
+            const owner = await publicClient.readContract({
+              address: CONTRACTS.TICKET_NFT,
+              abi: TicketNFTABI,
+              functionName: 'ownerOf',
+              args: [BigInt(tokenId)],
+            });
+
+            // If this user owns it, fetch ticket data
+            if (owner.toLowerCase() === address.toLowerCase()) {
+              const ticketData = await publicClient.readContract({
+                address: CONTRACTS.TICKET_NFT,
+                abi: TicketNFTABI,
+                functionName: 'getTicket',
+                args: [BigInt(tokenId)],
+              });
+
+              userTickets.push({
+                tokenId: tokenId,
+                data: ticketData,
+              });
+
+              console.log(`✅ Found ticket #${tokenId} owned by user`);
+            }
+          } catch (err) {
+            // Token doesn't exist or other error, skip
+            if (!err.message?.includes('ERC721NonexistentToken')) {
+              console.log(`Token ${tokenId} check failed:`, err.message);
+            }
+          }
+
+          // Stop if we've found all user's tickets
+          if (userTickets.length === Number(balance)) {
+            break;
+          }
+        }
+
+        console.log(`✅ Found ${userTickets.length} tickets for user`);
+        setTickets(userTickets);
+      } catch (error) {
+        console.error('❌ Error fetching tickets:', error);
+        setTickets([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    const userTickets = ticketQueries
-      .map((query, index) => {
-        const owner = ownerQueries[index]?.data;
-        if (query.data && owner?.toLowerCase() === address.toLowerCase()) {
-          return { data: query.data, tokenId: index + 1 };
-        }
-        return null;
-      })
-      .filter(Boolean);
-    
-    setTickets(userTickets);
-  }, [address, balance, ticketQueries.map(q => q.data).join(','), ownerQueries.map(q => q.data).join(',')]);
+    fetchTickets();
+  }, [address, balance, totalTokens, publicClient]);
 
   return {
     tickets,
-    isLoading: ticketQueries.some(q => q.isLoading) || ownerQueries.some(q => q.isLoading),
+    isLoading: isLoading || balanceLoading,
     balance: balance ? Number(balance) : 0
   };
 }
@@ -202,7 +229,6 @@ export function useVerifyTicket() {
     }
 
     try {
-      // Get ticket data
       const ticket = await publicClient.readContract({
         address: CONTRACTS.TICKET_NFT,
         abi: TicketNFTABI,
@@ -210,7 +236,6 @@ export function useVerifyTicket() {
         args: [BigInt(ticketId)],
       });
 
-      // Get ticket owner
       const owner = await publicClient.readContract({
         address: CONTRACTS.TICKET_NFT,
         abi: TicketNFTABI,
@@ -263,4 +288,55 @@ export function useEventTicketCount(eventId) {
   });
 
   return { count: count ? Number(count) : 0, isLoading };
+}
+
+// ✅ NEW: Hook to withdraw funds (for organizer)
+export function useWithdrawFunds() {
+  const { writeContract, data: hash, error, isPending } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const withdraw = () => {
+    console.log('💰 Withdrawing funds from contract...');
+    writeContract({
+      address: CONTRACTS.TICKET_NFT,
+      abi: TicketNFTABI,
+      functionName: 'withdraw',
+    });
+  };
+
+  return {
+    withdraw,
+    isPending: isPending || isConfirming,
+    isSuccess,
+    error,
+    hash
+  };
+}
+
+// ✅ NEW: Hook to get contract balance
+export function useContractBalance() {
+  const publicClient = usePublicClient();
+  const [balance, setBalance] = useState('0');
+
+  useEffect(() => {
+    async function fetchBalance() {
+      if (!publicClient) return;
+      
+      try {
+        const bal = await publicClient.getBalance({
+          address: CONTRACTS.TICKET_NFT,
+        });
+        setBalance(bal.toString());
+      } catch (error) {
+        console.error('Error fetching contract balance:', error);
+      }
+    }
+
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 10000); // Update every 10s
+    
+    return () => clearInterval(interval);
+  }, [publicClient]);
+
+  return { balance };
 }

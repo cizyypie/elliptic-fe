@@ -1,11 +1,14 @@
-// src/components/OrganizerView.jsx - FIXED VERSION
+// src/components/OrganizerView.jsx - WITH WITHDRAW FEATURE
 import { useState, useEffect } from "react";
-import { Plus, X, RefreshCw } from "lucide-react";
+import { Plus, X, RefreshCw, DollarSign } from "lucide-react";
 import {
   useGetEvents,
   useCreateEvent,
   useEventTicketCount,
+  useWithdrawFunds,
+  useContractBalance,
 } from "../hooks/useContracts";
+import { formatEther } from "viem";
 
 // Event Summary Card
 function EventSummaryCard({ event, eventId }) {
@@ -96,7 +99,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             placeholder="Contoh: Konser Musik Rock 2025"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
         </div>
 
@@ -108,7 +111,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             type="date"
             value={formData.date}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
         </div>
 
@@ -123,7 +126,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             onChange={(e) =>
               setFormData({ ...formData, location: e.target.value })
             }
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
         </div>
 
@@ -138,7 +141,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             onChange={(e) =>
               setFormData({ ...formData, price: e.target.value })
             }
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
         </div>
 
@@ -153,7 +156,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
             onChange={(e) =>
               setFormData({ ...formData, totalSupply: e.target.value })
             }
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
         </div>
 
@@ -177,36 +180,97 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
   );
 }
 
-// Main Organizer View - FIXED
+// ✅ NEW: Contract Balance Display with Withdraw Button
+function ContractBalanceCard() {
+  const { balance } = useContractBalance();
+  const { withdraw, isPending, isSuccess } = useWithdrawFunds();
+
+  useEffect(() => {
+    if (isSuccess) {
+      alert("✅ Funds withdrawn successfully!");
+    }
+  }, [isSuccess]);
+
+  const balanceInEth = balance ? Number(formatEther(BigInt(balance))) : 0;
+
+  return (
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-md p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600 mb-1">
+            Contract Balance
+          </p>
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-6 h-6 text-green-600" />
+            <p className="text-3xl font-bold text-green-700">
+              {balanceInEth.toFixed(4)} ETH
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Total revenue from ticket sales
+          </p>
+        </div>
+
+        <button
+          onClick={withdraw}
+          disabled={isPending || balanceInEth === 0}
+          className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
+            balanceInEth === 0 || isPending
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg"
+          }`}
+        >
+          {isPending ? (
+            <>
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+              <span>Withdrawing...</span>
+            </>
+          ) : (
+            <>
+              <DollarSign className="w-5 h-5" />
+              <span>Withdraw All</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {balanceInEth === 0 && (
+        <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded">
+          ⚠️ No funds available to withdraw
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Main Organizer View
 export default function OrganizerView() {
   const [showForm, setShowForm] = useState(false);
   const { events, isLoading, refetch } = useGetEvents();
   const { createEvent, isPending, isSuccess, hash } = useCreateEvent();
 
-  // ✅ FIXED: Wait for transaction confirmation before refetching
   useEffect(() => {
     if (isSuccess && hash) {
-      console.log('✅ Event created successfully! Hash:', hash);
-      
-      // Wait a bit for blockchain to update, then refetch
+      console.log("✅ Event created successfully! Hash:", hash);
+
       const timer = setTimeout(() => {
-        console.log('🔄 Refetching events...');
+        console.log("🔄 Refetching events...");
         refetch();
         setShowForm(false);
         alert("Event berhasil dibuat! ✅");
-      }, 2000); // Wait 2 seconds for blockchain confirmation
+      }, 2000);
 
       return () => clearTimeout(timer);
     }
   }, [isSuccess, hash, refetch]);
 
   const handleCreateEvent = (formData) => {
-    console.log('📝 Creating event with data:', formData);
+    console.log("📝 Creating event with data:", formData);
     createEvent(formData);
   };
 
   const handleManualRefresh = () => {
-    console.log('🔄 Manual refresh triggered');
+    console.log("🔄 Manual refresh triggered");
     refetch();
   };
 
@@ -221,7 +285,6 @@ export default function OrganizerView() {
         </div>
 
         <div className="flex gap-2">
-          {/* Manual Refresh Button */}
           <button
             onClick={handleManualRefresh}
             className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-semibold hover:bg-gray-300 flex items-center gap-2 transition"
@@ -233,7 +296,7 @@ export default function OrganizerView() {
           {!showForm && (
             <button
               onClick={() => setShowForm(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-500 flex items-center gap-2 transition"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2 transition"
             >
               <Plus className="w-5 h-5" />
               Buat Event Baru
@@ -241,6 +304,9 @@ export default function OrganizerView() {
           )}
         </div>
       </div>
+
+      {/* ✅ Contract Balance Card */}
+      <ContractBalanceCard />
 
       {showForm && (
         <CreateEventForm
@@ -252,7 +318,7 @@ export default function OrganizerView() {
 
       {isLoading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="text-gray-600 mt-4">Loading events...</p>
         </div>
       ) : events.length === 0 ? (

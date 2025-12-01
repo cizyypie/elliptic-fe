@@ -1,19 +1,20 @@
 // src/components/EventCard.jsx
-import { Calendar, MapPin, DollarSign, Ticket } from 'lucide-react';
+import { Calendar, MapPin, DollarSign, Ticket } from "lucide-react";
 
 export default function EventCard({ event, onBuyTicket, isPending }) {
-  const availability = ((event.totalSupply - event.sold) / event.totalSupply) * 100;
+  const availability =
+    ((event.totalSupply - event.sold) / event.totalSupply) * 100;
   const isSoldOut = event.sold >= event.totalSupply;
-  
+
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition">
-      <div className="h-40 bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+      <div className="h-40 bg-gradient-to-br from-blue-500 to-pink-500 flex items-center justify-center">
         <Ticket className="w-20 h-20 text-white opacity-80" />
       </div>
-      
+
       <div className="p-6">
         <h3 className="text-xl font-bold mb-3">{event.eventName}</h3>
-        
+
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-gray-600">
             <Calendar className="w-4 h-4" />
@@ -39,7 +40,7 @@ export default function EventCard({ event, onBuyTicket, isPending }) {
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
+            <div
               className="bg-green-500 h-2 rounded-full transition-all"
               style={{ width: `${availability}%` }}
             />
@@ -51,11 +52,11 @@ export default function EventCard({ event, onBuyTicket, isPending }) {
           disabled={isSoldOut || isPending}
           className={`w-full py-3 rounded-lg font-semibold transition ${
             isSoldOut || isPending
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-purple-600 text-white hover:bg-purple-700'
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700"
           }`}
         >
-          {isPending ? 'Processing...' : isSoldOut ? 'Sold Out' : 'Beli Tiket'}
+          {isPending ? "Processing..." : isSoldOut ? "Sold Out" : "Beli Tiket"}
         </button>
       </div>
     </div>
