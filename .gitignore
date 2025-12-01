@@ -16,6 +16,7 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 .idea
+.wagmi-config
 .DS_Store
 *.suo
 *.ntvs*

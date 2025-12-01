@@ -135,7 +135,7 @@ function MyTicket({ ticket, tokenId, eventData, onShowQR, isGenerating }) {
   );
 }
 
-// Main Buyer View - FULLY FIXED
+// Main Buyer View 
 export default function BuyerView({ address, isConnected, onShowQR }) {
   const [generatingQR, setGeneratingQR] = useState(null);
   

@@ -1,32 +1,28 @@
-// frontend/src/wagmi-config.js
-import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { defineChain } from 'viem';
+// src/wagmi-config.ts (or .js)
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { defineChain } from "viem";
 
-// Define Anvil local chain
-export const anvilChain = defineChain({
-  id: 31337,
-  name: 'Anvil',
-  network: 'anvil',
+// 👇 Adjust chainId / rpc URLs to match your Anvil setup
+export const anvil = defineChain({
+  id: 31337, // default anvil chainId (same as hardhat)
+  name: "Anvil Local",
   nativeCurrency: {
+    name: "Ether",
+    symbol: "ETH",
     decimals: 18,
-    name: 'Ether',
-    symbol: 'ETH',
   },
   rpcUrls: {
     default: {
-      http: ['http://127.0.0.1:8545'],
+      http: ["http://127.0.0.1:8545"],
     },
     public: {
-      http: ['http://127.0.0.1:8545'],
+      http: ["http://127.0.0.1:8545"],
     },
   },
-  testnet: true,
 });
 
-// Configure wagmi with RainbowKit
 export const config = getDefaultConfig({
-  appName: 'Ticket NFT System',
-  projectId: '2ace89a7cea9fd759b5f4bf9271a7953', // Get from https://cloud.walletconnect.com
-  chains: [anvilChain],
-  ssr: false, // If using Next.js, set to true
+  appName: "Ellipticheck (Local Anvil)",
+  projectId: "2ace89a7cea9fd759b5f4bf9271a7953", 
+  chains: [anvil],
 });

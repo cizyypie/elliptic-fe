@@ -1,45 +1,15 @@
-// src/App.jsx - Debug Version
+// src/App.jsx
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Ticket } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
-// Import modular views
 import BuyerView from "./components/BuyerView";
 import OrganizerView from "./components/OrganizerView";
 import VerifierView from "./components/VerifierView";
 
-// Import hooks
 import { useGetContractOwner } from "./hooks/useContracts";
-
-// DEBUG PANEL - Remove after fixing
-function DebugPanel({ address, owner, isOrganizer }) {
-  return (
-    <div className="bg-gray-900 text-white p-4 rounded-lg mb-4 font-mono text-xs">
-      <h3 className="font-bold mb-2 text-yellow-400">🐛 DEBUG INFO</h3>
-      <div className="space-y-1">
-        <p>
-          <strong>Your Address:</strong> {address || "Not connected"}
-        </p>
-        <p>
-          <strong>Contract Owner:</strong> {owner || "Loading..."}
-        </p>
-        <p>
-          <strong>Is Organizer:</strong> {isOrganizer ? "✅ YES" : "❌ NO"}
-        </p>
-        <p>
-          <strong>Match (lowercase):</strong>{" "}
-          {address && owner
-            ? address.toLowerCase() === owner.toLowerCase()
-              ? "✅ MATCH"
-              : "❌ NO MATCH"
-            : "Checking..."}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 // HEADER COMPONENT
 function Header({ role, setRole, address, owner, isOrganizer }) {
@@ -77,7 +47,11 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
                     setRole("organizer");
                   } else {
                     alert(
-                      `Not authorized!\n\nYour address: ${address}\nOwner: ${owner}\n\nOnly contract owner can access.`
+                      `Not authorized!\n\nYour address: ${
+                        address || "N/A"
+                      }\nOwner: ${
+                        owner || "N/A"
+                      }\n\nOnly organizer can access.`
                     );
                   }
                 }}
@@ -97,7 +71,11 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
                     setRole("verifier");
                   } else {
                     alert(
-                      `Not authorized!\n\nYour address: ${address}\nOwner: ${owner}\n\nOnly contract owner can access.`
+                      `Not authorized!\n\nYour address: ${
+                        address || "N/A"
+                      }\nOwner: ${
+                        owner || "N/A"
+                      }\n\nOnly organizer owner can access.`
                     );
                   }
                 }}
@@ -121,7 +99,7 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
         {address && isOrganizer && (
           <div className="text-center mt-3">
             <span className="inline-block bg-yellow-400 text-blue-900 px-4 py-1 rounded-full text-xs font-bold">
-              👑 Contract Owner - Full Access Granted
+              👑 Organizer - Full Access Granted
             </span>
           </div>
         )}
@@ -134,12 +112,11 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
 function QRCodeModal({ ticket, onClose }) {
   if (!ticket) return null;
 
-  // ⬅️ ticket sekarang = { qrPayload, displayInfo }
-  const { qrPayload, displayInfo } = ticket;
+  // ticket is expected to be: { qrPayload, displayInfo }
+  const { qrPayload, displayInfo } = ticket || {};
+  const isSigned = !!(qrPayload && qrPayload.r && qrPayload.s);
 
-  const isSigned = qrPayload && qrPayload.r && qrPayload.s;
-
-  // QR hanya berisi payload pendek
+  // QR only contains the short payload
   const qrData = JSON.stringify(qrPayload || {});
 
   return (
@@ -168,7 +145,9 @@ function QRCodeModal({ ticket, onClose }) {
             {displayInfo?.deadline && (
               <p className="text-xs text-green-600 mt-1">
                 Valid until:{" "}
-                {new Date(Number(displayInfo.deadline) * 1000).toLocaleString()}
+                {new Date(
+                  Number(displayInfo.deadline) * 1000
+                ).toLocaleString()}
               </p>
             )}
           </div>
@@ -181,9 +160,15 @@ function QRCodeModal({ ticket, onClose }) {
         )}
 
         <div className="text-center mb-4">
-          <p className="font-semibold text-lg">Token #{displayInfo?.tokenId}</p>
-          <p className="text-gray-600">Event #{displayInfo?.eventId}</p>
-          <p className="text-gray-600">Tiket #{displayInfo?.ticketNumber}</p>
+          <p className="font-semibold text-lg">
+            Token #{displayInfo?.tokenId ?? "-"}
+          </p>
+          <p className="text-gray-600">
+            Event #{displayInfo?.eventId ?? "-"}
+          </p>
+          <p className="text-gray-600">
+            Tiket #{displayInfo?.ticketNumber ?? "-"}
+          </p>
         </div>
 
         <button
@@ -203,18 +188,21 @@ export default function App() {
   const [selectedTicket, setSelectedTicket] = useState(null);
 
   const { address, isConnected } = useAccount();
+
   const {
     owner,
     isLoading: ownerLoading,
     error: ownerError,
   } = useGetContractOwner();
 
-  // Calculate isOrganizer with proper checks
-  const isOrganizer = Boolean(
-    address && owner && address.toLowerCase() === owner.toLowerCase()
-  );
+  // Organizer = connected address === contract owner and owner has finished loading
+  const isOrganizer =
+    !!address &&
+    !!owner &&
+    !ownerLoading &&
+    address.toLowerCase() === owner.toLowerCase();
 
-  // Debug: Log values on change
+  // Debug logging
   useEffect(() => {
     console.log("=== DEBUG INFO ===");
     console.log("Connected:", isConnected);
@@ -245,15 +233,6 @@ export default function App() {
       />
 
       <main className="container mx-auto px-4 py-8">
-        {/* DEBUG PANEL - Remove after fixing
-        {isConnected && (
-          <DebugPanel 
-            address={address}
-            owner={owner}
-            isOrganizer={isOrganizer}
-          />
-        )} */}
-
         {/* Connection Warning */}
         {!isConnected && (
           <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
@@ -283,11 +262,13 @@ export default function App() {
         {ownerError && isConnected && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-800 font-semibold">Error checking owner:</p>
-            <p className="text-red-700 text-sm">{ownerError.message}</p>
+            <p className="text-red-700 text-sm">
+              {String(ownerError.message || ownerError)}
+            </p>
           </div>
         )}
 
-        {/* Render appropriate view based on role */}
+        {/* Views */}
         {role === "buyer" && (
           <BuyerView
             address={address}
@@ -306,7 +287,7 @@ export default function App() {
                 Access Denied
               </h2>
               <p className="text-red-700 mb-4">
-                Only contract owner can access organizer panel
+                Only contract organizer can access organizer panel
               </p>
             </div>
           ))}
@@ -321,7 +302,7 @@ export default function App() {
                 Access Denied
               </h2>
               <p className="text-red-700 mb-4">
-                Only contract owner can verify tickets
+                Only organizer owner can verify tickets
               </p>
             </div>
           ))}

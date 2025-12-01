@@ -1,6 +1,6 @@
 export const CONTRACTS = {
-  TICKET_NFT: "0x8464135c8F25Da09e49BC8782676a84730C318bC", // Your deployed address
-  TICKET_VERIFIER: "0x71C95911E9a5D330f4D621842EC243EE1343292e", // Your deployed address
+  TICKET_NFT: "0x700b6A60ce7EaaEA56F065753d8dcB9653dbAD35", // Your deployed address
+  TICKET_VERIFIER: "0xA15BB66138824a1c7167f5E85b957d04Dd34E468", // Your deployed address
 };
 
 export const CHAIN_ID = 31337;
