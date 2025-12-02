@@ -18,7 +18,7 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
       <div className="container mx-auto">
         <div className="flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-3">
-            <Ticket className="w-8 h-8" />
+           <img src="/image.png" alt="Ellipticheck logo" className="w-15 h-10" />
             <div>
               <h1 className="text-2xl font-bold">Ellipticheck</h1>
               <p className="text-xs text-white/80">

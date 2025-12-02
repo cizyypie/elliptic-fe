@@ -1,8 +1,8 @@
-// src/components/VerifierView.jsx
-import { useState } from "react";
+// src/components/VerifierView.jsx - WITH IMAGE UPLOAD
+import { useState, useRef } from "react";
 import {
   Camera,
-  Search,
+  Upload,
   CheckCircle,
   XCircle,
   Shield,
@@ -11,11 +11,11 @@ import {
 import BarcodeScannerComponent from "react-qr-barcode-scanner";
 import { useWriteContract, usePublicClient } from "wagmi";
 import { CONTRACTS } from "../contracts/addresses";
+import QrScanner from "qr-scanner"; // ✅ NEW
 
 import TicketNFTABIRaw from "../contracts/TicketNFT.abi.json";
 import TicketVerifierABIRaw from "../contracts/TicketVerifier.abi.json";
 
-// Pastikan ABI berbentuk array
 const TicketNFTABI = Array.isArray(TicketNFTABIRaw)
   ? TicketNFTABIRaw
   : TicketNFTABIRaw.abi || [];
@@ -24,11 +24,11 @@ const TicketVerifierABI = Array.isArray(TicketVerifierABIRaw)
   ? TicketVerifierABIRaw
   : TicketVerifierABIRaw.abi || [];
 
-// 🔎 Normalisasi data QR (short key → full key)
+// 🔄 Normalize short keys → full keys
 function normalizeQRData(raw) {
-  if (!raw) return raw;
+  if (!raw) return null;
 
-  // format baru (diet)
+  // Short key format (from QR)
   if (raw.t && raw.o) {
     return {
       ticketId: String(raw.t),
@@ -42,11 +42,11 @@ function normalizeQRData(raw) {
     };
   }
 
-  // format lama (fallback)
+  // Already full format
   return raw;
 }
 
-// ================= QR SCANNER =================
+// ================= QR SCANNER + IMAGE UPLOAD =================
 function QRScanner({
   onScanSuccess,
   scanning,
@@ -54,37 +54,56 @@ function QRScanner({
   scanError,
   setScanError,
 }) {
-  const [manualInput, setManualInput] = useState("");
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
   const handleScan = (err, result) => {
     if (result?.text) {
       try {
-        const text = result.text || result.getText?.();
-        const raw = JSON.parse(text);
+        const raw = JSON.parse(result.text);
         const qrData = normalizeQRData(raw);
-        console.log("📱 QR Scanned:", qrData);
+        console.log("📱 QR from camera:", qrData);
         onScanSuccess(qrData);
         setScanning(false);
         setScanError(null);
       } catch (error) {
-        console.error("❌ QR Parse Error:", error);
-        setScanError("QR Code tidak valid atau rusak");
+        console.error("❌ Parse error:", error);
+        setScanError("QR Code tidak valid");
         setTimeout(() => setScanError(null), 3000);
       }
     }
-
-    if (err) {
-      console.error("Scanner error:", err);
-    }
   };
 
-  const handleManualVerify = () => {
-    if (manualInput) {
-      onScanSuccess({
-        ticketId: manualInput,
-        manual: true,
+  // ✅ Handle image upload with qr-scanner library
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setScanError(null);
+
+    try {
+      console.log("📸 Processing image...");
+
+      const result = await QrScanner.scanImage(file, {
+        returnDetailedScanResult: true,
       });
-      setManualInput("");
+
+      console.log("✅ QR decoded from image:", result.data);
+
+      const raw = JSON.parse(result.data);
+      const qrData = normalizeQRData(raw);
+
+      onScanSuccess(qrData);
+    } catch (error) {
+      console.error("Image decode error:", error);
+      setScanError("Gagal membaca QR dari gambar. Pastikan gambar jelas.");
+      setTimeout(() => setScanError(null), 4000);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -102,51 +121,61 @@ function QRScanner({
         </div>
       )}
 
+      {uploading && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent" />
+            <p className="text-blue-800">Memproses gambar QR...</p>
+          </div>
+        </div>
+      )}
+
       {!scanning ? (
         <div className="space-y-4">
           <button
             onClick={() => setScanning(true)}
-            className="w-full bg-blue-800 text-white py-4 rounded-lg font-semibold hover:bg-yellow-400 flex items-center justify-center gap-2 transition"
+            disabled={uploading}
+            className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2 transition disabled:bg-gray-400"
           >
             <Camera className="w-5 h-5" />
-            Buka Kamera untuk Scan
+            Scan dengan Kamera
           </button>
 
-          {/* <div className="relative">
+          <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 bg-white text-gray-500">Atau</span>
             </div>
-          </div> */}
+          </div>
 
-          {/* <div className="flex gap-2">
+          {/* ✅ Image Upload */}
+          <label
+            className={`w-full bg-green-600 text-white py-4 rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2 transition cursor-pointer ${
+              uploading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            <Upload className="w-5 h-5" />
+            Upload Gambar QR Code
             <input
-              type="text"
-              placeholder="Masukkan Ticket ID"
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleManualVerify()}
-              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={uploading}
+              className="hidden"
             />
-            <button
-              onClick={handleManualVerify}
-              disabled={!manualInput}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-indigo-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
-            >
-              <Search className="w-4 h-4" />
-              Cari
-            </button>
-          </div> */}
+          </label>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-xs text-yellow-800 font-semibold mb-1">
-              ⚠️ Catatan Keamanan:
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-800 font-semibold mb-1">
+              💡 Tips:
             </p>
-            <p className="text-xs text-yellow-700">
-              Manual lookup tidak memverifikasi signature. Gunakan QR scanner
-              untuk keamanan penuh.
+            <p className="text-xs text-blue-700">
+              • Ambil screenshot QR code yang jelas<br />
+              • Pastikan QR code tidak blur atau terpotong<br />
+              • Upload file JPG, PNG, atau JPEG
             </p>
           </div>
         </div>
@@ -181,31 +210,29 @@ function QRScanner({
   );
 }
 
-// ================= HASIL VERIFIKASI =================
+// ================= VERIFICATION RESULT =================
 function VerificationResult({ result, onClose }) {
   if (!result) return null;
 
   const isSuccess = result.valid;
 
-  const getStatusColor = () => (isSuccess ? "text-green-600" : "text-red-600");
-
-  const getStatusIcon = () =>
-    isSuccess ? (
-      <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4 animate-bounce" />
-    ) : (
-      <XCircle className="w-20 h-20 text-red-500 mx-auto mb-4 animate-pulse" />
-    );
-
-  const getTitle = () =>
-    isSuccess ? "✅ Tiket Valid & Terverifikasi!" : "❌ Verifikasi Tiket Gagal";
-
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
         <div className="text-center mb-6">
-          {getStatusIcon()}
-          <h2 className={`text-3xl font-bold mb-2 ${getStatusColor()}`}>
-            {getTitle()}
+          {isSuccess ? (
+            <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4 animate-bounce" />
+          ) : (
+            <XCircle className="w-20 h-20 text-red-500 mx-auto mb-4 animate-pulse" />
+          )}
+          <h2
+            className={`text-3xl font-bold mb-2 ${
+              isSuccess ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {isSuccess
+              ? "✅ Tiket Valid & Terverifikasi!"
+              : "❌ Verifikasi Gagal"}
           </h2>
         </div>
 
@@ -231,17 +258,14 @@ function VerificationResult({ result, onClose }) {
               <span className="text-gray-600">Owner:</span>
               <span className="font-mono text-xs">
                 {result.qrData.owner
-                  ? `${result.qrData.owner.slice(
-                      0,
-                      6
-                    )}...${result.qrData.owner.slice(-4)}`
+                  ? `${result.qrData.owner.slice(0, 6)}...${result.qrData.owner.slice(-4)}`
                   : "-"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Status:</span>
               <span className="font-semibold text-green-600">
-                ✅ Verified & Ditandai Digunakan
+                ✅ Verified
               </span>
             </div>
             {result.hash && (
@@ -255,7 +279,7 @@ function VerificationResult({ result, onClose }) {
         )}
 
         {!isSuccess && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 space-y-2">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
@@ -265,24 +289,11 @@ function VerificationResult({ result, onClose }) {
                 )}
               </div>
             </div>
-
             {result.type && (
               <div className="mt-2 pt-2 border-t border-red-300">
-                <p className="text-xs text-red-600">
-                  Kode error: {result.type}
-                </p>
+                <p className="text-xs text-red-600">Error: {result.type}</p>
               </div>
             )}
-          </div>
-        )}
-
-        {result.manual && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-            <p className="text-xs text-yellow-800">
-              ⚠️ Ini hasil pencarian manual (berdasarkan Ticket ID saja).
-              Signature TIDAK diverifikasi. Untuk keamanan penuh, gunakan QR
-              scanner.
-            </p>
           </div>
         )}
 
@@ -308,21 +319,14 @@ export default function VerifierView() {
   const { writeContractAsync } = useWriteContract();
 
   const handleVerifyQR = async (qrData) => {
-    console.log("🔍 Mulai verifikasi QR:", qrData);
+    console.log("🔍 Verifying QR:", qrData);
 
-    if (qrData.manual) {
-      await handleManualLookup(qrData.ticketId);
-      return;
-    }
-
-    if (!qrData.r || !qrData.s || !qrData.Qx || !qrData.Qy) {
+    if (!qrData || !qrData.r || !qrData.s || !qrData.Qx || !qrData.Qy) {
       setVerificationResult({
         valid: false,
-        reason: "❌ Data QR tidak valid",
-        details:
-          "QR code tidak mengandung data signature yang lengkap (r, s, Qx, Qy).",
+        reason: "❌ QR tidak valid",
+        details: "Data signature tidak lengkap",
         type: "invalid_qr",
-        qrData,
       });
       return;
     }
@@ -334,12 +338,11 @@ export default function VerifierView() {
       if (now > parseInt(qrData.deadline)) {
         setVerificationResult({
           valid: false,
-          reason: "⏰ Tiket kedaluwarsa",
-          details: `Signature hanya berlaku sampai: ${new Date(
+          reason: "⏰ Kedaluwarsa",
+          details: `Berlaku sampai: ${new Date(
             parseInt(qrData.deadline) * 1000
-          ).toLocaleString()}. Minta pemilik tiket generate QR baru.`,
+          ).toLocaleString()}`,
           type: "expired",
-          qrData,
         });
         return;
       }
@@ -361,12 +364,9 @@ export default function VerifierView() {
       if (ticketOwner.toLowerCase() !== qrData.owner.toLowerCase()) {
         setVerificationResult({
           valid: false,
-          reason: "🚫 Bukan pemilik tiket",
-          details:
-            "Alamat pemilik di blockchain tidak sama dengan alamat yang menandatangani QR ini.",
+          reason: "🚫 Bukan pemilik",
+          details: "Alamat tidak cocok",
           type: "not_owner",
-          ticketInfo,
-          qrData,
         });
         return;
       }
@@ -374,11 +374,9 @@ export default function VerifierView() {
       if (ticketInfo[3]) {
         setVerificationResult({
           valid: false,
-          reason: "♻️ Tiket sudah digunakan",
-          details: "Tiket ini sudah pernah dipakai sebelumnya.",
+          reason: "♻️ Sudah digunakan",
+          details: "Tiket sudah pernah dipakai",
           type: "already_used",
-          ticketInfo,
-          qrData,
         });
         return;
       }
@@ -408,48 +406,43 @@ export default function VerifierView() {
       if (receipt.status === "success") {
         setVerificationResult({
           valid: true,
-          reason: "✅ Tiket valid",
-          details:
-            "Signature terverifikasi dan tiket ditandai sebagai sudah digunakan.",
+          reason: "✅ Valid",
+          details: "Signature terverifikasi",
           type: "success",
           hash,
-          qrData: { ...qrData, ticketInfo },
+          qrData,
           ticketInfo,
         });
       } else {
         setVerificationResult({
           valid: false,
-          reason: "❌ Verifikasi gagal di blockchain",
-          details: "Transaksi tidak berhasil (status tidak success).",
+          reason: "❌ Tx gagal",
+          details: "Transaction failed",
           type: "tx_failed",
-          qrData,
         });
       }
     } catch (error) {
-      console.error("❌ Error saat verifikasi on-chain:", error);
+      console.error("Verification error:", error);
 
-      let errorType = "unknown";
       let errorMsg = "Verifikasi gagal";
+      let errorType = "unknown";
       const raw = (error.shortMessage || error.message || "").toString();
 
       if (raw.includes("Expired")) {
-        errorType = "expired_onchain";
-        errorMsg = "⏰ Tiket kedaluwarsa (on-chain).";
+        errorType = "expired";
+        errorMsg = "⏰ Kedaluwarsa";
       } else if (raw.includes("Replayed")) {
-        errorType = "replay_attack";
-        errorMsg = "🔁 Replay attack terdeteksi (digest sudah pernah dipakai).";
+        errorType = "replay";
+        errorMsg = "🔁 Replay attack";
       } else if (raw.includes("InvalidSignature")) {
-        errorType = "invalid_signature";
-        errorMsg = "❌ Signature ECDSA tidak valid.";
+        errorType = "invalid_sig";
+        errorMsg = "❌ Signature invalid";
       } else if (raw.includes("InvalidPublicKey")) {
         errorType = "invalid_pubkey";
-        errorMsg = "🔑 Public key pada QR tidak valid.";
-      } else if (raw.includes("TicketAlreadyUsed")) {
-        errorType = "already_used_onchain";
-        errorMsg = "♻️ Tiket ini sudah ditandai digunakan di blockchain.";
+        errorMsg = "🔑 Public key invalid";
       } else if (raw.includes("NotOwner")) {
-        errorType = "not_owner_onchain";
-        errorMsg = "🚫 Verifikasi gagal: bukan pemilik tiket yang sah.";
+        errorType = "not_owner";
+        errorMsg = "🚫 Bukan pemilik";
       }
 
       setVerificationResult({
@@ -457,39 +450,6 @@ export default function VerifierView() {
         reason: errorMsg,
         details: raw,
         type: errorType,
-        qrData,
-      });
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const handleManualLookup = async (ticketId) => {
-    setVerifying(true);
-    try {
-      const ticketInfo = await publicClient.readContract({
-        address: CONTRACTS.TICKET_NFT,
-        abi: TicketNFTABI,
-        functionName: "tickets",
-        args: [BigInt(ticketId)],
-      });
-
-      setVerificationResult({
-        valid: true,
-        reason: "📄 Ticket Found",
-        details: "Manual lookup - signature TIDAK diverifikasi",
-        type: "manual",
-        ticketInfo,
-        ticketId,
-        manual: true,
-        qrData: { ticketId },
-      });
-    } catch (error) {
-      setVerificationResult({
-        valid: false,
-        reason: "❌ Ticket Not Found",
-        details: error.message,
-        type: "not_found",
       });
     } finally {
       setVerifying(false);
@@ -506,7 +466,7 @@ export default function VerifierView() {
               <div>
                 <p className="font-semibold text-lg">Memverifikasi...</p>
                 <p className="text-sm text-gray-600">
-                  Memeriksa signature dan status tiket di blockchain...
+                  Memeriksa signature...
                 </p>
               </div>
             </div>

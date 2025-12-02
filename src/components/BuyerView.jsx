@@ -1,28 +1,33 @@
-// src/components/BuyerView.jsx - FULLY FIXED VERSION
-import { useState } from 'react';
-import { Calendar, MapPin, DollarSign, Ticket } from 'lucide-react';
-import { useWalletClient, usePublicClient } from 'wagmi';
-import { useGetEvents, useMintTicket, useMyTickets, useEventTicketCount } from '../hooks/useContracts';
-import { generateSignedQRData } from '../utils/signatureUtils';
-import { CONTRACTS } from '../contracts/addresses';
+// src/components/BuyerView.jsx - DIET QR VERSION
+import { useState } from "react";
+import { Calendar, MapPin, DollarSign, Ticket } from "lucide-react";
+import { useWalletClient, usePublicClient } from "wagmi";
+import {
+  useGetEvents,
+  useMintTicket,
+  useMyTickets,
+  useEventTicketCount,
+} from "../hooks/useContracts";
+import { generateSignedQRData } from "../utils/signatureUtils";
+import { CONTRACTS } from "../contracts/addresses";
 
-// Event Card Component
 function EventCard({ event, eventId, onBuyTicket, isPending }) {
   const { count: soldCount } = useEventTicketCount(eventId);
   const totalSupply = Number(event.totalSupply);
   const sold = soldCount || 0;
-  const availability = totalSupply > 0 ? ((totalSupply - sold) / totalSupply) * 100 : 0;
+  const availability =
+    totalSupply > 0 ? ((totalSupply - sold) / totalSupply) * 100 : 0;
   const isSoldOut = sold >= totalSupply;
-  
+
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition">
       <div className="h-40 bg-blue-300 flex items-center justify-center">
         <Ticket className="w-20 h-20 text-white opacity-80" />
       </div>
-      
+
       <div className="p-6">
         <h3 className="text-xl font-bold mb-3">{event.eventName}</h3>
-        
+
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-gray-600">
             <Calendar className="w-4 h-4" />
@@ -43,10 +48,12 @@ function EventCard({ event, eventId, onBuyTicket, isPending }) {
         <div className="mb-4">
           <div className="flex justify-between text-sm mb-1">
             <span className="text-gray-600">Ketersediaan</span>
-            <span className="font-semibold">{totalSupply - sold}/{totalSupply}</span>
+            <span className="font-semibold">
+              {totalSupply - sold}/{totalSupply}
+            </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
+            <div
               className="bg-blue-400 h-2 rounded-full transition-all"
               style={{ width: `${availability}%` }}
             />
@@ -58,20 +65,23 @@ function EventCard({ event, eventId, onBuyTicket, isPending }) {
           disabled={isSoldOut || isPending || !event.isActive}
           className={`w-full py-3 rounded-lg font-semibold transition ${
             isSoldOut || isPending || !event.isActive
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700"
           }`}
         >
-          {isPending ? 'Processing...' : 
-           isSoldOut ? 'Sold Out' : 
-           !event.isActive ? 'Event Inactive' : 'Beli Tiket'}
+          {isPending
+            ? "Processing..."
+            : isSoldOut
+            ? "Sold Out"
+            : !event.isActive
+            ? "Event Inactive"
+            : "Beli Tiket"}
         </button>
       </div>
     </div>
   );
 }
 
-//FIXED: My Ticket Component with proper event data
 function MyTicket({ ticket, tokenId, eventData, onShowQR, isGenerating }) {
   return (
     <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all border-l-4 border-blue-500">
@@ -79,16 +89,16 @@ function MyTicket({ ticket, tokenId, eventData, onShowQR, isGenerating }) {
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <h3 className="text-xl font-bold text-gray-800 mb-2">
-              {eventData?.eventName || 'Loading...'}
+              {eventData?.eventName || "Loading..."}
             </h3>
             <div className="space-y-1 text-sm text-gray-600">
               <div className="flex items-center gap-2">
                 <span>📅</span>
-                <span>{eventData?.eventDate || '-'}</span>
+                <span>{eventData?.eventDate || "-"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span>📍</span>
-                <span>{eventData?.eventLocation || '-'}</span>
+                <span>{eventData?.eventLocation || "-"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span>🎫</span>
@@ -100,22 +110,24 @@ function MyTicket({ ticket, tokenId, eventData, onShowQR, isGenerating }) {
               </div>
             </div>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${
-            ticket.isUsed 
-              ? 'bg-red-100 text-red-700' 
-              : 'bg-green-100 text-green-700'
-          }`}>
-            {ticket.isUsed ? '✓ Digunakan' : '✓ Aktif'}
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ml-2 ${
+              ticket.isUsed
+                ? "bg-red-100 text-red-700"
+                : "bg-green-100 text-green-700"
+            }`}
+          >
+            {ticket.isUsed ? "✓ Digunakan" : "✓ Aktif"}
           </span>
         </div>
-        
+
         <button
           onClick={onShowQR}
           disabled={ticket.isUsed || isGenerating}
           className={`w-full py-3 rounded-lg font-semibold transition-all ${
             ticket.isUsed || isGenerating
-              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg'
+              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+              : "bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg"
           }`}
         >
           {isGenerating ? (
@@ -135,75 +147,70 @@ function MyTicket({ ticket, tokenId, eventData, onShowQR, isGenerating }) {
   );
 }
 
-// Main Buyer View 
 export default function BuyerView({ address, isConnected, onShowQR }) {
   const [generatingQR, setGeneratingQR] = useState(null);
-  
+
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
-  const { events } = useGetEvents(); //Get all events
+  const { events } = useGetEvents();
   const { tickets } = useMyTickets(address);
   const { mintTicket, isPending: isMinting } = useMintTicket();
 
-  //Helper function to get event data for a ticket
   const getEventDataForTicket = (ticket) => {
     const eventId = Number(ticket.eventId);
-    const event = events.find(e => Number(e.id) === eventId);
-    
+    const event = events.find((e) => Number(e.id) === eventId);
+
     if (!event) {
       return {
-        eventName: 'Event #' + eventId,
-        eventDate: 'Unknown',
-        eventLocation: 'Unknown'
+        eventName: "Event #" + eventId,
+        eventDate: "Unknown",
+        eventLocation: "Unknown",
       };
     }
-    
+
     return event;
   };
 
   const handleBuyTicket = async (eventId, event) => {
     if (!isConnected) {
-      alert('Please connect your wallet first!');
+      alert("Please connect your wallet first!");
       return;
     }
 
     try {
       const priceInWei = event.price.toString();
       await mintTicket(eventId, priceInWei, address);
-      alert('Ticket purchase transaction sent! Tunggu konfirmasi...');
+      alert("Ticket purchase transaction sent! Tunggu konfirmasi...");
     } catch (error) {
-      console.error('Error buying ticket:', error);
-      alert('Gagal membeli tiket: ' + (error.message || 'Unknown error'));
+      console.error("Error buying ticket:", error);
+      alert("Gagal membeli tiket: " + (error.message || "Unknown error"));
     }
   };
 
-  //FIXED: Handle QR generation with signature and minimal payload
   const handleShowQR = async (ticket) => {
     if (!walletClient || !address) {
-      alert('Please connect your wallet first');
+      alert("Please connect your wallet first");
       return;
     }
 
     setGeneratingQR(ticket.tokenId);
 
     try {
-      // Find event data for this ticket
       const eventData = getEventDataForTicket(ticket);
-      
-      if (!eventData || eventData.eventName.startsWith('Event #')) {
-        alert('Event data not found. Please refresh the page.');
+
+      if (!eventData || eventData.eventName.startsWith("Event #")) {
+        alert("Event data not found. Please refresh the page.");
         setGeneratingQR(null);
         return;
       }
 
-      console.log('🔐 Generating signature for ticket:', {
+      console.log("🔐 Generating signature for ticket:", {
         tokenId: ticket.tokenId,
         eventId: ticket.eventId,
         owner: address,
-        eventData
+        eventData,
       });
 
-      // Generate signed QR data with signature
       const signedData = await generateSignedQRData(
         walletClient,
         { address },
@@ -217,24 +224,23 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
           eventDate: eventData.eventDate,
         },
         CONTRACTS.TICKET_VERIFIER,
-        31337 
+        31337
       );
 
-      console.log('✅ Signature generated successfully');
+      console.log("✅ Signature generated successfully");
 
-      //Create minimal payload for QR (short keys to reduce QR complexity)
+      // ✅ DIET QR: Ultra-compact format for easy scanning
       const qrPayload = {
-        t: signedData.ticketId,      // ticketId
-        o: signedData.owner,          // owner
-        d: signedData.deadline,       // deadline
-        m: signedData.metadataHash,   // metadataHash
-        r: signedData.r,              // signature r
-        s: signedData.s,              // signature s
-        x: signedData.Qx,             // public key x
-        y: signedData.Qy,             // public key y
+        t: signedData.ticketId,       // ticketId
+        o: signedData.owner,           // owner
+        d: signedData.deadline,        // deadline
+        m: signedData.metadataHash,    // metadataHash
+        r: signedData.r,               // signature r
+        s: signedData.s,               // signature s
+        x: signedData.Qx,              // public key x
+        y: signedData.Qy,              // public key y
       };
 
-      //Extra info for display only (not in QR)
       const displayInfo = {
         tokenId: ticket.tokenId,
         eventId: ticket.eventId,
@@ -245,12 +251,14 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
         deadline: signedData.deadline,
       };
 
-      //Pass both to modal
+      console.log("📊 QR Size:", JSON.stringify(qrPayload).length, "bytes");
+
       onShowQR({ qrPayload, displayInfo });
-      
     } catch (error) {
-      console.error('❌ Signature generation failed:', error);
-      alert(`Failed to generate secure QR code: ${error.message}\n\nPlease try again or check console for details.`);
+      console.error("❌ Signature generation failed:", error);
+      alert(
+        `Failed to generate secure QR code: ${error.message}\n\nPlease try again or check console for details.`
+      );
     } finally {
       setGeneratingQR(null);
     }
@@ -258,30 +266,34 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
 
   return (
     <div className="space-y-8">
-      {/* My Tickets Section */}
       <section>
         <h2 className="text-2xl font-bold mb-4">Tiket Saya</h2>
         {!isConnected ? (
           <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <p className="text-gray-600">Connect wallet untuk melihat tiket Anda</p>
+            <p className="text-gray-600">
+              Connect wallet untuk melihat tiket Anda
+            </p>
           </div>
         ) : tickets.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <p className="text-gray-600">Anda belum memiliki tiket. Beli tiket di event yang tersedia!</p>
+            <p className="text-gray-600">
+              Anda belum memiliki tiket. Beli tiket di event yang tersedia!
+            </p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {tickets.map((ticket) => {
-              //Get event data for each ticket
               const eventData = getEventDataForTicket(ticket.data);
-              
+
               return (
-                <MyTicket 
-                  key={ticket.tokenId} 
+                <MyTicket
+                  key={ticket.tokenId}
                   ticket={ticket.data}
                   tokenId={ticket.tokenId}
-                  eventData={eventData} //Pass event data
-                  onShowQR={() => handleShowQR({ ...ticket.data, tokenId: ticket.tokenId })}
+                  eventData={eventData}
+                  onShowQR={() =>
+                    handleShowQR({ ...ticket.data, tokenId: ticket.tokenId })
+                  }
                   isGenerating={generatingQR === ticket.tokenId}
                 />
               );
@@ -290,7 +302,6 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
         )}
       </section>
 
-      {/* Available Events Section */}
       <section>
         <h2 className="text-2xl font-bold mb-4">Event Tersedia</h2>
         {events.length === 0 ? (
@@ -300,8 +311,8 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((event) => (
-              <EventCard 
-                key={event.id} 
+              <EventCard
+                key={event.id}
                 event={event}
                 eventId={event.id}
                 onBuyTicket={handleBuyTicket}
