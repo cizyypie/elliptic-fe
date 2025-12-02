@@ -169,13 +169,12 @@ function QRScanner({
           </label>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs text-blue-800 font-semibold mb-1">
-              💡 Tips:
-            </p>
+            <p className="text-xs text-blue-800 font-semibold mb-1">💡 Tips:</p>
             <p className="text-xs text-blue-700">
-              • Ambil screenshot QR code yang jelas<br />
-              • Pastikan QR code tidak blur atau terpotong<br />
-              • Upload file JPG, PNG, atau JPEG
+              • Ambil screenshot QR code yang jelas
+              <br />
+              • Pastikan QR code tidak blur atau terpotong
+              <br />• Upload file JPG, PNG, atau JPEG
             </p>
           </div>
         </div>
@@ -258,15 +257,16 @@ function VerificationResult({ result, onClose }) {
               <span className="text-gray-600">Owner:</span>
               <span className="font-mono text-xs">
                 {result.qrData.owner
-                  ? `${result.qrData.owner.slice(0, 6)}...${result.qrData.owner.slice(-4)}`
+                  ? `${result.qrData.owner.slice(
+                      0,
+                      6
+                    )}...${result.qrData.owner.slice(-4)}`
                   : "-"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Status:</span>
-              <span className="font-semibold text-green-600">
-                ✅ Verified
-              </span>
+              <span className="font-semibold text-green-600">✅ Verified</span>
             </div>
             {result.hash && (
               <div className="mt-2 pt-2 border-t border-green-300">
@@ -322,6 +322,12 @@ export default function VerifierView() {
     console.log("🔍 Verifying QR:", qrData);
 
     if (!qrData || !qrData.r || !qrData.s || !qrData.Qx || !qrData.Qy) {
+      console.error("❌ Missing signature components:", {
+        hasR: !!qrData?.r,
+        hasS: !!qrData?.s,
+        hasQx: !!qrData?.Qx,
+        hasQy: !!qrData?.Qy,
+      });
       setVerificationResult({
         valid: false,
         reason: "❌ QR tidak valid",
@@ -381,6 +387,20 @@ export default function VerifierView() {
         return;
       }
 
+      console.log("▶️ verifyAccess req:", {
+        ticketId: String(qrData.ticketId),
+        owner: qrData.owner,
+        deadline: String(qrData.deadline),
+        metadataHash: qrData.metadataHash,
+      });
+
+      console.log("▶️ verifyAccess sig:", {
+        r: qrData.r,
+        s: qrData.s,
+        Qx: qrData.Qx,
+        Qy: qrData.Qy,
+      });
+
       const hash = await writeContractAsync({
         address: CONTRACTS.TICKET_VERIFIER,
         abi: TicketVerifierABI,
@@ -427,6 +447,7 @@ export default function VerifierView() {
       let errorMsg = "Verifikasi gagal";
       let errorType = "unknown";
       const raw = (error.shortMessage || error.message || "").toString();
+      console.error("RAW ERROR:", raw);
 
       if (raw.includes("Expired")) {
         errorType = "expired";
@@ -444,6 +465,7 @@ export default function VerifierView() {
         errorType = "not_owner";
         errorMsg = "🚫 Bukan pemilik";
       }
+      console.error("RAW ERROR:", raw);
 
       setVerificationResult({
         valid: false,
@@ -465,9 +487,7 @@ export default function VerifierView() {
               <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent" />
               <div>
                 <p className="font-semibold text-lg">Memverifikasi...</p>
-                <p className="text-sm text-gray-600">
-                  Memeriksa signature...
-                </p>
+                <p className="text-sm text-gray-600">Memeriksa signature...</p>
               </div>
             </div>
           </div>

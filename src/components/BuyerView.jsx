@@ -229,7 +229,6 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
 
       console.log("✅ Signature generated successfully");
 
-      // ✅ DIET QR: Ultra-compact format for easy scanning
       const qrPayload = {
         t: signedData.ticketId,       // ticketId
         o: signedData.owner,           // owner

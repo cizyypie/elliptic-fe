@@ -20,7 +20,7 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
           <div className="flex items-center gap-3">
            <img src="/image.png" alt="Ellipticheck logo" className="w-15 h-10" />
             <div>
-              <h1 className="text-2xl font-bold">Ellipticheck</h1>
+              <h1 className="text-2xl font-bold">elliptiCheck</h1>
               <p className="text-xs text-white/80">
                 Ticket Verification System
               </p>
