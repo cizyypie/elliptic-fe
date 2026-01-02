@@ -1,7 +1,7 @@
-// src/components/BuyerView.jsx - DIET QR VERSION
-import { useState } from "react";
+// src/components/BuyerView.jsx - WITH TOAST NOTIFICATIONS
+import { useState, useEffect } from "react";
 import { Calendar, MapPin, DollarSign, Ticket } from "lucide-react";
-import { useWalletClient, usePublicClient } from "wagmi";
+import { useWalletClient, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
 import {
   useGetEvents,
   useMintTicket,
@@ -10,6 +10,7 @@ import {
 } from "../hooks/useContracts";
 import { generateSignedQRData } from "../utils/signatureUtils";
 import { CONTRACTS } from "../contracts/addresses";
+import { useToast } from "./Toast";
 
 function EventCard({ event, eventId, onBuyTicket, isPending }) {
   const { count: soldCount } = useEventTicketCount(eventId);
@@ -100,10 +101,6 @@ function MyTicket({ ticket, tokenId, eventData, onShowQR, isGenerating }) {
                 <span>📍</span>
                 <span>{eventData?.eventLocation || "-"}</span>
               </div>
-              {/* <div className="flex items-center gap-2">
-                <span></span>
-                <span>Ticket #{Number(ticket.ticketNumber)}</span>
-              </div> */}
               <div className="flex items-center gap-2">
                 <span>🎫</span>
                 <span>Ticket #{tokenId}</span>
@@ -149,12 +146,119 @@ function MyTicket({ ticket, tokenId, eventData, onShowQR, isGenerating }) {
 
 export default function BuyerView({ address, isConnected, onShowQR }) {
   const [generatingQR, setGeneratingQR] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [pendingTxHash, setPendingTxHash] = useState(null);
+  const [loadingToastId, setLoadingToastId] = useState(null);
+  const toast = useToast();
 
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
   const { events } = useGetEvents();
-  const { tickets } = useMyTickets(address);
-  const { mintTicket, isPending: isMinting } = useMintTicket();
+  const { tickets, refetch: refetchTickets } = useMyTickets(address);
+  const { mintTicket, isPending: isMinting, isSuccess: mintSuccess, hash: mintHash, error: mintError } = useMintTicket();
+
+  // Monitor transaction confirmation
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash: pendingTxHash,
+  });
+
+  // Handle mint transaction sent (user confirmed in wallet)
+  useEffect(() => {
+    if (mintSuccess && mintHash) {
+      console.log("✅ Transaction sent, hash:", mintHash);
+      setPendingTxHash(mintHash);
+      
+      if (loadingToastId) {
+        toast.removeToast(loadingToastId);
+      }
+      
+      const confirmingId = toast.loading(
+        "Waiting for Confirmation ⏳",
+        "Your transaction is being confirmed on the blockchain..."
+      );
+      setLoadingToastId(confirmingId);
+    }
+  }, [mintSuccess, mintHash]);
+
+  // Handle transaction confirmed on blockchain
+  useEffect(() => {
+    if (isConfirmed && pendingTxHash) {
+      console.log("✅ Transaction confirmed!");
+      
+      if (loadingToastId) {
+        toast.removeToast(loadingToastId);
+        setLoadingToastId(null);
+      }
+      
+      toast.success(
+        "Ticket Confirmed! 🎉",
+        "Your ticket purchase has been confirmed on the blockchain",
+        { duration: 10000 }
+      );
+
+      // Refresh tickets after a short delay
+      setTimeout(() => {
+        refetchTickets();
+        toast.info(
+          "Ticket Available ✓",
+          "Your new ticket is now visible in 'My Tickets' section",
+          { duration: 6000 }
+        );
+      }, 2000);
+
+      setPendingTxHash(null);
+      setIsProcessing(false); // Reset processing state on success
+    }
+  }, [isConfirmed, pendingTxHash]);
+
+  // Handle mint errors (user rejection or transaction failure)
+  useEffect(() => {
+    if (mintError) {
+      console.error("❌ Mint error:", mintError);
+      
+      // Clear loading toast
+      if (loadingToastId) {
+        toast.removeToast(loadingToastId);
+        setLoadingToastId(null);
+      }
+
+      let errorTitle = "Purchase Failed";
+      let errorMessage = "An error occurred while purchasing the ticket";
+
+      // Check for user rejection
+      if (mintError.message?.includes("User rejected") || 
+          mintError.message?.includes("user rejected") ||
+          mintError.message?.includes("User denied")) {
+        errorTitle = "Transaction Cancelled";
+        errorMessage = "You cancelled the transaction in your wallet";
+      } 
+      // Check for insufficient funds
+      else if (mintError.message?.includes("insufficient funds")) {
+        errorTitle = "Insufficient Funds";
+        errorMessage = "You don't have enough ETH to complete this purchase";
+      }
+      // Check for gas errors
+      else if (mintError.message?.includes("gas")) {
+        errorTitle = "Gas Error";
+        errorMessage = "Transaction failed due to gas estimation error. Please try again.";
+      }
+      // Other errors
+      else if (mintError.shortMessage) {
+        errorMessage = mintError.shortMessage;
+      } else if (mintError.message) {
+        errorMessage = mintError.message;
+      }
+
+      // Show error toast only once
+      toast.error(errorTitle, errorMessage, {
+        duration: 10000,
+      });
+
+      // Reset states
+      setPendingTxHash(null);
+      setIsProcessing(false); // Reset processing state on error
+    }
+  }, [mintError]); // Only depend on mintError to prevent loops
 
   const getEventDataForTicket = (ticket) => {
     const eventId = Number(ticket.eventId);
@@ -171,37 +275,92 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
     return event;
   };
 
- const sortedEvents = [...events].sort((a, b) => Number(b.id) - Number(a.id));
+  const sortedEvents = [...events].sort((a, b) => Number(b.id) - Number(a.id));
 
   const handleBuyTicket = async (eventId, event) => {
     if (!isConnected) {
-      alert("Please connect your wallet first!");
+      toast.error(
+        "Wallet Not Connected",
+        "Please connect your wallet to purchase tickets"
+      );
       return;
     }
+
+    if (isProcessing) return; // Prevent multiple simultaneous purchases
+    
+    setIsProcessing(true);
+    const processingId = toast.loading(
+      "Preparing Transaction",
+      `Please confirm the purchase in your wallet...`
+    );
+    setLoadingToastId(processingId);
 
     try {
       const priceInWei = event.price.toString();
       await mintTicket(eventId, priceInWei, address);
-      alert("Ticket purchase transaction sent! Tunggu konfirmasi...");
+      
+      // Transaction sent successfully - the useEffect hooks will handle the rest
+      console.log("📤 Transaction request sent to wallet");
+      
     } catch (error) {
-      console.error("Error buying ticket:", error);
-      alert("Gagal membeli tiket: " + (error.message || "Unknown error"));
+      // This catch block handles errors before the transaction is sent
+      // (e.g., contract reverts during simulation)
+      console.error("Error initiating purchase:", error);
+      
+      if (loadingToastId) {
+        toast.removeToast(loadingToastId);
+        setLoadingToastId(null);
+      }
+
+      let errorMessage = "Failed to initiate purchase";
+      
+      if (error.message?.includes("SoldOut")) {
+        errorMessage = "This event is sold out";
+      } else if (error.message?.includes("EventNotActive")) {
+        errorMessage = "This event is not active";
+      } else if (error.message?.includes("InsufficientPayment")) {
+        errorMessage = "Insufficient payment amount";
+      } else if (error.message?.includes("User rejected") || 
+                 error.message?.includes("user rejected") ||
+                 error.message?.includes("User denied")) {
+        errorMessage = "Transaction was cancelled";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error("Cannot Purchase", errorMessage, {
+        duration: 10000,
+      });
+      
+      setIsProcessing(false); // Reset on error
     }
   };
 
   const handleShowQR = async (ticket) => {
     if (!walletClient || !address) {
-      alert("Please connect your wallet first");
+      toast.error(
+        "Wallet Not Connected",
+        "Please connect your wallet to generate QR code"
+      );
       return;
     }
 
     setGeneratingQR(ticket.tokenId);
 
+    const loadingToastId = toast.loading(
+      "Generating QR Code",
+      "Creating secure ticket QR code..."
+    );
+
     try {
       const eventData = getEventDataForTicket(ticket);
 
       if (!eventData || eventData.eventName.startsWith("Event #")) {
-        alert("Event data not found. Please refresh the page.");
+        toast.removeToast(loadingToastId);
+        toast.error(
+          "Event Data Missing",
+          "Could not load event information. Please refresh the page."
+        );
         setGeneratingQR(null);
         return;
       }
@@ -232,14 +391,14 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
       console.log("✅ Signature generated successfully");
 
       const qrPayload = {
-        t: signedData.ticketId,       // ticketId
-        o: signedData.owner,           // owner
-        d: signedData.deadline,        // deadline
-        m: signedData.metadataHash,    // metadataHash
-        r: signedData.r,               // signature r
-        s: signedData.s,               // signature s
-        x: signedData.Qx,              // public key x
-        y: signedData.Qy,              // public key y
+        t: signedData.ticketId,
+        o: signedData.owner,
+        d: signedData.deadline,
+        m: signedData.metadataHash,
+        r: signedData.r,
+        s: signedData.s,
+        x: signedData.Qx,
+        y: signedData.Qy,
       };
 
       const displayInfo = {
@@ -254,12 +413,31 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
 
       console.log("📊 QR Size:", JSON.stringify(qrPayload).length, "bytes");
 
+      toast.removeToast(loadingToastId);
+      toast.success(
+        "QR Code Generated! ✓",
+        "Your secure ticket QR code is ready",
+        { duration: 3000 }
+      );
+
       onShowQR({ qrPayload, displayInfo });
     } catch (error) {
       console.error("❌ Signature generation failed:", error);
-      alert(
-        `Failed to generate secure QR code: ${error.message}\n\nPlease try again or check console for details.`
-      );
+      toast.removeToast(loadingToastId);
+
+      let errorMessage = "Failed to generate QR code";
+      
+      if (error.message?.includes("User rejected")) {
+        errorMessage = "Signature request was cancelled";
+      } else if (error.message?.includes("wallet")) {
+        errorMessage = "Wallet connection issue. Please try reconnecting.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      toast.error("QR Generation Failed", errorMessage, {
+        duration: 8000,
+      });
     } finally {
       setGeneratingQR(null);
     }

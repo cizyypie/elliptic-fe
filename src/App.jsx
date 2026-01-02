@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - WITH TOAST PROVIDER
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -8,17 +8,18 @@ import { QRCodeSVG } from "qrcode.react";
 import BuyerView from "./components/BuyerView";
 import OrganizerView from "./components/OrganizerView";
 import VerifierView from "./components/VerifierView";
+import { ToastProvider, useToast } from "./components/Toast";
 
 import { useGetContractOwner } from "./hooks/useContracts";
 
 // HEADER COMPONENT
-function Header({ role, setRole, address, owner, isOrganizer }) {
+function Header({ role, setRole, address, owner, isOrganizer, toast }) {
   return (
     <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
       <div className="container mx-auto">
         <div className="flex justify-between items-center flex-wrap gap-4">
           <div className="flex items-center gap-3">
-           <img src="/image.png" alt="Ellipticheck logo" className="w-15 h-10" />
+            <img src="/image.png" alt="Ellipticheck logo" className="w-15 h-10" />
             <div>
               <h1 className="text-2xl font-bold">elliptiCheck</h1>
               <p className="text-xs text-white/80">
@@ -46,12 +47,10 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
                   if (isOrganizer) {
                     setRole("organizer");
                   } else {
-                    alert(
-                      `Not authorized!\n\nYour address: ${
-                        address || "N/A"
-                      }\nOwner: ${
-                        owner || "N/A"
-                      }\n\nOnly organizer can access.`
+                    toast.error(
+                      "Access Denied",
+                      "You are not the organizer. Only the organizer can access this section.",
+                      { duration: 3000 }
                     );
                   }
                 }}
@@ -70,12 +69,10 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
                   if (isOrganizer) {
                     setRole("verifier");
                   } else {
-                    alert(
-                      `Not authorized!\n\nYour address: ${
-                        address || "N/A"
-                      }\nOwner: ${
-                        owner || "N/A"
-                      }\n\nOnly organizer can access.`
+                    toast.error(
+                      "Access Denied",
+                      "You are not the organizer. Only the organizer can access the verifier section.",
+                      { duration: 3000 }
                     );
                   }
                 }}
@@ -183,9 +180,10 @@ function QRCodeModal({ ticket, onClose }) {
 }
 
 // MAIN APP COMPONENT
-export default function App() {
+function AppContent() {
   const [role, setRole] = useState("buyer");
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const toast = useToast(); // Add toast hook
 
   const { address, isConnected } = useAccount();
 
@@ -230,83 +228,84 @@ export default function App() {
         address={address}
         owner={owner}
         isOrganizer={isOrganizer}
+        toast={toast}
       />
 
-      <main className="container mx-auto px-4 py-8">
-        {/* Connection Warning */}
-        {!isConnected && (
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="text-3xl">⚠️</div>
-              <div>
-                <p className="font-semibold text-yellow-800">
-                  Wallet Belum Terkoneksi
-                </p>
-                <p className="text-yellow-700 text-sm">
-                  Silakan connect wallet Anda untuk menggunakan aplikasi
-                </p>
+        <main className="container mx-auto px-4 py-8">
+          {/* Connection Warning */}
+          {!isConnected && (
+            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">⚠️</div>
+                <div>
+                  <p className="font-semibold text-yellow-800">
+                    Wallet Belum Terkoneksi
+                  </p>
+                  <p className="text-yellow-700 text-sm">
+                    Silakan connect wallet Anda untuk menggunakan aplikasi
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Owner Check Loading */}
-        {ownerLoading && isConnected && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-blue-800">Checking contract owner...</p>
-          </div>
-        )}
+          {/* Owner Check Loading */}
+          {ownerLoading && isConnected && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-blue-800">Checking contract owner...</p>
+            </div>
+          )}
 
-        {/* Owner Check Error */}
-        {ownerError && isConnected && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-800 font-semibold">Error checking owner:</p>
-            <p className="text-red-700 text-sm">
-              {String(ownerError.message || ownerError)}
-            </p>
-          </div>
-        )}
-
-        {/* Views */}
-        {role === "buyer" && (
-          <BuyerView
-            address={address}
-            isConnected={isConnected}
-            onShowQR={setSelectedTicket}
-          />
-        )}
-
-        {role === "organizer" &&
-          (isOrganizer ? (
-            <OrganizerView />
-          ) : (
-            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-              <div className="text-6xl mb-4">🔒</div>
-              <h2 className="text-2xl font-bold text-red-800 mb-2">
-                Access Denied
-              </h2>
-              <p className="text-red-700 mb-4">
-                Only contract organizer can access organizer panel
+          {/* Owner Check Error */}
+          {ownerError && isConnected && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-800 font-semibold">Error checking owner:</p>
+              <p className="text-red-700 text-sm">
+                {String(ownerError.message || ownerError)}
               </p>
             </div>
-          ))}
+          )}
 
-        {role === "verifier" &&
-          (isOrganizer ? (
-            <VerifierView />
-          ) : (
-            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-              <div className="text-6xl mb-4">🔒</div>
-              <h2 className="text-2xl font-bold text-red-800 mb-2">
-                Access Denied
-              </h2>
-              <p className="text-red-700 mb-4">
-                Only organizer can verify tickets
-              </p>
-            </div>
-          ))}
-      </main>
+          {/* Views */}
+          {role === "buyer" && (
+            <BuyerView
+              address={address}
+              isConnected={isConnected}
+              onShowQR={setSelectedTicket}
+            />
+          )}
+
+          {role === "organizer" &&
+            (isOrganizer ? (
+              <OrganizerView />
+            ) : (
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
+                <div className="text-6xl mb-4">🔒</div>
+                <h2 className="text-2xl font-bold text-red-800 mb-2">
+                  Access Denied
+                </h2>
+                <p className="text-red-700 mb-4">
+                  Only contract organizer can access organizer panel
+                </p>
+              </div>
+            ))}
+
+          {role === "verifier" &&
+            (isOrganizer ? (
+              <VerifierView />
+            ) : (
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
+                <div className="text-6xl mb-4">🔒</div>
+                <h2 className="text-2xl font-bold text-red-800 mb-2">
+                  Access Denied
+                </h2>
+                <p className="text-red-700 mb-4">
+                  Only organizer can verify tickets
+                </p>
+              </div>
+            ))}
+        </main>
 
       {/* QR Code Modal */}
       {selectedTicket && (
@@ -316,5 +315,14 @@ export default function App() {
         />
       )}
     </div>
+  );
+}
+
+// Wrap AppContent with ToastProvider
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
   );
 }

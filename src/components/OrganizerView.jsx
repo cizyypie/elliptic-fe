@@ -1,4 +1,3 @@
-// src/components/OrganizerView.jsx - CLEAN VERSION
 import { useState, useEffect } from "react";
 import { Plus, X, RefreshCw, CheckCircle } from "lucide-react";
 import {
@@ -6,26 +5,7 @@ import {
   useCreateEvent,
   useEventTicketCount,
 } from "../hooks/useContracts";
-
-// Toast Notification Component
-function Toast({ message, onClose }) {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  return (
-    <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
-      <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px]">
-        <CheckCircle className="w-5 h-5" />
-        <span className="font-medium">{message}</span>
-      </div>
-    </div>
-  );
-}
+import { useToast } from "./Toast";
 
 // Event Summary Card
 function EventSummaryCard({ event, eventId }) {
@@ -200,7 +180,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
 // Main Organizer View
 export default function OrganizerView() {
   const [showForm, setShowForm] = useState(false);
-  const [showToast, setShowToast] = useState(false);
+  const toast = useToast();
   const { events, isLoading, refetch } = useGetEvents();
   const { createEvent, isPending, isSuccess, hash } = useCreateEvent();
 
@@ -208,38 +188,63 @@ export default function OrganizerView() {
     if (isSuccess && hash) {
       console.log("✅ Event created successfully! Hash:", hash);
 
+      toast.success(
+        "Event Created! 🎉",
+        "Your event has been created successfully",
+        { duration: 5000 }
+      );
+
       const timer = setTimeout(() => {
         console.log("🔄 Refetching events...");
         refetch();
         setShowForm(false);
-        setShowToast(true); 
+        
+        toast.info(
+          "Event Active ✓",
+          "Your event is now visible to buyers",
+          { duration: 4000 }
+        );
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [isSuccess, hash, refetch]);
+  }, [isSuccess, hash, refetch, toast]);
 
   const handleCreateEvent = (formData) => {
     console.log("📝 Creating event with data:", formData);
-    createEvent(formData);
+    
+    const loadingToastId = toast.loading(
+      "Creating Event",
+      "Processing your event creation..."
+    );
+
+    try {
+      createEvent(formData);
+      toast.removeToast(loadingToastId);
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast.removeToast(loadingToastId);
+      
+      toast.error(
+        "Creation Failed",
+        error.message || "Failed to create event",
+        { duration: 6000 }
+      );
+    }
   };
 
   const handleManualRefresh = () => {
     console.log("🔄 Manual refresh triggered");
+    toast.info("Refreshing Events", "Loading latest event data...", {
+      duration: 2000,
+    });
     refetch();
   };
+
   const sortedEvents = [...events].sort((a, b) => b.id - a.id);
 
   return (
     <div className="space-y-6">
-      {/* Toast Notification */}
-      {showToast && (
-        <Toast
-          message="Event berhasil dibuat!"
-          onClose={() => setShowToast(false)}
-        />
-      )}
-
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Event Management</h2>

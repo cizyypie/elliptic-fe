@@ -1,4 +1,4 @@
-// src/components/VerifierView.jsx - WITH IMAGE UPLOAD
+// src/components/VerifierView.jsx - WITH TOAST NOTIFICATIONS
 import { useState, useRef } from "react";
 import {
   Camera,
@@ -11,7 +11,8 @@ import {
 import BarcodeScannerComponent from "react-qr-barcode-scanner";
 import { useWriteContract, usePublicClient } from "wagmi";
 import { CONTRACTS } from "../contracts/addresses";
-import QrScanner from "qr-scanner"; // ✅ NEW
+import QrScanner from "qr-scanner";
+import { useToast } from "./Toast";
 
 import TicketNFTABIRaw from "../contracts/TicketNFT.abi.json";
 import TicketVerifierABIRaw from "../contracts/TicketVerifier.abi.json";
@@ -24,7 +25,7 @@ const TicketVerifierABI = Array.isArray(TicketVerifierABIRaw)
   ? TicketVerifierABIRaw
   : TicketVerifierABIRaw.abi || [];
 
-// 🔄 Normalize short keys → full keys
+//  Normalize short keys → full keys
 function normalizeQRData(raw) {
   if (!raw) return null;
 
@@ -56,6 +57,7 @@ function QRScanner({
 }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const toast = useToast();
 
   const handleScan = (err, result) => {
     if (result?.text) {
@@ -63,12 +65,24 @@ function QRScanner({
         const raw = JSON.parse(result.text);
         const qrData = normalizeQRData(raw);
         console.log("📱 QR from camera:", qrData);
+        
+        toast.success(
+          "QR Code Detected ✓",
+          "Processing ticket verification...",
+          { duration: 2000 }
+        );
+        
         onScanSuccess(qrData);
         setScanning(false);
         setScanError(null);
       } catch (error) {
         console.error("❌ Parse error:", error);
         setScanError("QR Code tidak valid");
+        toast.error(
+          "Invalid QR Code",
+          "Could not read QR code data",
+          { duration: 4000 }
+        );
         setTimeout(() => setScanError(null), 3000);
       }
     }
@@ -82,6 +96,11 @@ function QRScanner({
     setUploading(true);
     setScanError(null);
 
+    const loadingToastId = toast.loading(
+      "Processing Image",
+      "Reading QR code from image..."
+    );
+
     try {
       console.log("📸 Processing image...");
 
@@ -94,10 +113,24 @@ function QRScanner({
       const raw = JSON.parse(result.data);
       const qrData = normalizeQRData(raw);
 
+      toast.removeToast(loadingToastId);
+      toast.success(
+        "Image Processed ✓",
+        "QR code detected from image",
+        { duration: 2000 }
+      );
+
       onScanSuccess(qrData);
     } catch (error) {
       console.error("Image decode error:", error);
+      toast.removeToast(loadingToastId);
+      
       setScanError("Gagal membaca QR dari gambar. Pastikan gambar jelas.");
+      toast.error(
+        "Image Read Failed",
+        "Could not detect QR code in image. Please try a clearer photo.",
+        { duration: 5000 }
+      );
       setTimeout(() => setScanError(null), 4000);
     } finally {
       setUploading(false);
@@ -133,7 +166,12 @@ function QRScanner({
       {!scanning ? (
         <div className="space-y-4">
           <button
-            onClick={() => setScanning(true)}
+            onClick={() => {
+              setScanning(true);
+              toast.info("Camera Active", "Point camera at QR code", {
+                duration: 3000,
+              });
+            }}
             disabled={uploading}
             className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2 transition disabled:bg-gray-400"
           >
@@ -169,11 +207,13 @@ function QRScanner({
           </label>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs text-blue-800 font-semibold mb-1"> ⚠️Warning:</p>
+            <p className="text-xs text-blue-800 font-semibold mb-1">
+              {" "}
+              ⚠️Warning:
+            </p>
             <p className="text-xs text-blue-700">
               • Metode upload foto hanya untuk pengujian
-              <br />
-              • Untuk production sebaiknya hanya menggunakan QR Code
+              <br />• Untuk production sebaiknya hanya menggunakan QR Code
             </p>
           </div>
         </div>
@@ -313,6 +353,7 @@ export default function VerifierView() {
   const [scanning, setScanning] = useState(false);
   const [scanError, setScanError] = useState(null);
   const [verifying, setVerifying] = useState(false);
+  const toast = useToast();
 
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
@@ -327,6 +368,13 @@ export default function VerifierView() {
         hasQx: !!qrData?.Qx,
         hasQy: !!qrData?.Qy,
       });
+      
+      toast.error(
+        "Invalid QR Data",
+        "QR code is missing signature components",
+        { duration: 5000 }
+      );
+      
       setVerificationResult({
         valid: false,
         reason: "❌ QR tidak valid",
@@ -338,9 +386,21 @@ export default function VerifierView() {
 
     setVerifying(true);
 
+    const loadingToastId = toast.loading(
+      "Verifying Ticket",
+      "Checking ticket authenticity..."
+    );
+
     try {
       const now = Math.floor(Date.now() / 1000);
       if (now > parseInt(qrData.deadline)) {
+        toast.removeToast(loadingToastId);
+        toast.error(
+          "Ticket Expired",
+          "This QR code has expired. Please request a new one.",
+          { duration: 6000 }
+        );
+        
         setVerificationResult({
           valid: false,
           reason: "⏰ Kedaluwarsa",
@@ -367,6 +427,13 @@ export default function VerifierView() {
       });
 
       if (ticketOwner.toLowerCase() !== qrData.owner.toLowerCase()) {
+        toast.removeToast(loadingToastId);
+        toast.error(
+          "Ownership Mismatch",
+          "This ticket does not belong to the QR code holder",
+          { duration: 6000 }
+        );
+        
         setVerificationResult({
           valid: false,
           reason: "🚫 Bukan pemilik",
@@ -377,6 +444,13 @@ export default function VerifierView() {
       }
 
       if (ticketInfo[3]) {
+        toast.removeToast(loadingToastId);
+        toast.warning(
+          "Already Used",
+          "This ticket has already been used",
+          { duration: 6000 }
+        );
+        
         setVerificationResult({
           valid: false,
           reason: "♻️ Sudah digunakan",
@@ -391,13 +465,6 @@ export default function VerifierView() {
         owner: qrData.owner,
         deadline: String(qrData.deadline),
         metadataHash: qrData.metadataHash,
-      });
-
-      console.log("▶️ verifyAccess sig:", {
-        r: qrData.r,
-        s: qrData.s,
-        Qx: qrData.Qx,
-        Qy: qrData.Qy,
       });
 
       const hash = await writeContractAsync({
@@ -422,7 +489,15 @@ export default function VerifierView() {
 
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
 
+      toast.removeToast(loadingToastId);
+
       if (receipt.status === "success") {
+        toast.success(
+          "Verification Successful! ✅",
+          "Ticket is valid and has been marked as used",
+          { duration: 6000 }
+        );
+        
         setVerificationResult({
           valid: true,
           reason: "✅ Valid",
@@ -433,6 +508,12 @@ export default function VerifierView() {
           ticketInfo,
         });
       } else {
+        toast.error(
+          "Transaction Failed",
+          "Verification transaction did not complete successfully",
+          { duration: 6000 }
+        );
+        
         setVerificationResult({
           valid: false,
           reason: "❌ Tx gagal",
@@ -442,6 +523,7 @@ export default function VerifierView() {
       }
     } catch (error) {
       console.error("Verification error:", error);
+      toast.removeToast(loadingToastId);
 
       let errorMsg = "Verifikasi gagal";
       let errorType = "unknown";
@@ -464,7 +546,8 @@ export default function VerifierView() {
         errorType = "not_owner";
         errorMsg = "🚫 Bukan pemilik";
       }
-      console.error("RAW ERROR:", raw);
+
+      toast.error("Verification Failed", errorMsg, { duration: 7000 });
 
       setVerificationResult({
         valid: false,
