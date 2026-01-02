@@ -1,4 +1,3 @@
-// src/hooks/useContracts.js - FIXED VERSION
 import { usePublicClient, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import { useState, useEffect } from 'react';
@@ -90,13 +89,14 @@ export function useCreateEvent() {
   };
 }
 
-// HOOK: Mint Ticket
+// HOOK: Mint Ticket (with direct payment to owner)
 export function useMintTicket() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const mintTicket = (eventId, price, to) => {
     console.log('🎫 Minting ticket:', { eventId, price, to });
+    console.log('💰 Payment will go directly to organizer');
     writeContract({
       address: CONTRACTS.TICKET_NFT,
       abi: TicketNFTABI,
@@ -115,7 +115,7 @@ export function useMintTicket() {
   };
 }
 
-// ✅ FIXED: Get User's Tickets - Proper implementation
+// Get User's Tickets
 export function useMyTickets(address) {
   const publicClient = usePublicClient();
   const [tickets, setTickets] = useState([]);
@@ -288,55 +288,4 @@ export function useEventTicketCount(eventId) {
   });
 
   return { count: count ? Number(count) : 0, isLoading };
-}
-
-// ✅ NEW: Hook to withdraw funds (for organizer)
-export function useWithdrawFunds() {
-  const { writeContract, data: hash, error, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
-
-  const withdraw = () => {
-    console.log('💰 Withdrawing funds from contract...');
-    writeContract({
-      address: CONTRACTS.TICKET_NFT,
-      abi: TicketNFTABI,
-      functionName: 'withdraw',
-    });
-  };
-
-  return {
-    withdraw,
-    isPending: isPending || isConfirming,
-    isSuccess,
-    error,
-    hash
-  };
-}
-
-// ✅ NEW: Hook to get contract balance
-export function useContractBalance() {
-  const publicClient = usePublicClient();
-  const [balance, setBalance] = useState('0');
-
-  useEffect(() => {
-    async function fetchBalance() {
-      if (!publicClient) return;
-      
-      try {
-        const bal = await publicClient.getBalance({
-          address: CONTRACTS.TICKET_NFT,
-        });
-        setBalance(bal.toString());
-      } catch (error) {
-        console.error('Error fetching contract balance:', error);
-      }
-    }
-
-    fetchBalance();
-    const interval = setInterval(fetchBalance, 10000); // Update every 10s
-    
-    return () => clearInterval(interval);
-  }, [publicClient]);
-
-  return { balance };
 }

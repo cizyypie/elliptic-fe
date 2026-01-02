@@ -100,13 +100,13 @@ function MyTicket({ ticket, tokenId, eventData, onShowQR, isGenerating }) {
                 <span>📍</span>
                 <span>{eventData?.eventLocation || "-"}</span>
               </div>
+              {/* <div className="flex items-center gap-2">
+                <span></span>
+                <span>Ticket #{Number(ticket.ticketNumber)}</span>
+              </div> */}
               <div className="flex items-center gap-2">
                 <span>🎫</span>
-                <span>Ticket #{Number(ticket.ticketNumber)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span>🆔</span>
-                <span>Token #{tokenId}</span>
+                <span>Ticket #{tokenId}</span>
               </div>
             </div>
           </div>
@@ -170,6 +170,8 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
 
     return event;
   };
+
+ const sortedEvents = [...events].sort((a, b) => Number(b.id) - Number(a.id));
 
   const handleBuyTicket = async (eventId, event) => {
     if (!isConnected) {
@@ -303,13 +305,13 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
 
       <section>
         <h2 className="text-2xl font-bold mb-4">Event Tersedia</h2>
-        {events.length === 0 ? (
+        {sortedEvents.length === 0 ? (
           <div className="bg-gray-50 rounded-lg p-8 text-center">
             <p className="text-gray-600">Belum ada event tersedia saat ini.</p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event) => (
+            {sortedEvents.map((event) => (
               <EventCard
                 key={event.id}
                 event={event}

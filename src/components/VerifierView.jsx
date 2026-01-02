@@ -169,12 +169,11 @@ function QRScanner({
           </label>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs text-blue-800 font-semibold mb-1">💡 Tips:</p>
+            <p className="text-xs text-blue-800 font-semibold mb-1"> ⚠️Warning:</p>
             <p className="text-xs text-blue-700">
-              • Ambil screenshot QR code yang jelas
+              • Metode upload foto hanya untuk pengujian
               <br />
-              • Pastikan QR code tidak blur atau terpotong
-              <br />• Upload file JPG, PNG, atau JPEG
+              • Untuk production sebaiknya hanya menggunakan QR Code
             </p>
           </div>
         </div>

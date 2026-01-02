@@ -75,7 +75,7 @@ function Header({ role, setRole, address, owner, isOrganizer }) {
                         address || "N/A"
                       }\nOwner: ${
                         owner || "N/A"
-                      }\n\nOnly organizer owner can access.`
+                      }\n\nOnly organizer can access.`
                     );
                   }
                 }}
@@ -302,7 +302,7 @@ export default function App() {
                 Access Denied
               </h2>
               <p className="text-red-700 mb-4">
-                Only organizer owner can verify tickets
+                Only organizer can verify tickets
               </p>
             </div>
           ))}

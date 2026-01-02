@@ -1,21 +1,38 @@
-// src/components/OrganizerView.jsx - WITH WITHDRAW FEATURE
+// src/components/OrganizerView.jsx - CLEAN VERSION
 import { useState, useEffect } from "react";
-import { Plus, X, RefreshCw, DollarSign } from "lucide-react";
+import { Plus, X, RefreshCw, CheckCircle } from "lucide-react";
 import {
   useGetEvents,
   useCreateEvent,
   useEventTicketCount,
-  useWithdrawFunds,
-  useContractBalance,
 } from "../hooks/useContracts";
-import { formatEther } from "viem";
+
+// Toast Notification Component
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+      <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px]">
+        <CheckCircle className="w-5 h-5" />
+        <span className="font-medium">{message}</span>
+      </div>
+    </div>
+  );
+}
 
 // Event Summary Card
 function EventSummaryCard({ event, eventId }) {
   const { count: soldCount } = useEventTicketCount(eventId);
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-xl font-bold mb-2">{event.eventName}</h3>
@@ -47,7 +64,7 @@ function EventSummaryCard({ event, eventId }) {
         </div>
         <div>
           <p className="text-gray-600 text-sm">Revenue</p>
-          <p className="font-bold">
+          <p className="font-bold text-green-600">
             {((soldCount * Number(event.price)) / 1e18).toFixed(4)} ETH
           </p>
         </div>
@@ -180,72 +197,10 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
   );
 }
 
-// ✅ NEW: Contract Balance Display with Withdraw Button
-function ContractBalanceCard() {
-  const { balance } = useContractBalance();
-  const { withdraw, isPending, isSuccess } = useWithdrawFunds();
-
-  useEffect(() => {
-    if (isSuccess) {
-      alert("✅ Funds withdrawn successfully!");
-    }
-  }, [isSuccess]);
-
-  const balanceInEth = balance ? Number(formatEther(BigInt(balance))) : 0;
-
-  return (
-    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-md p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">
-            Contract Balance
-          </p>
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-6 h-6 text-green-600" />
-            <p className="text-3xl font-bold text-green-700">
-              {balanceInEth.toFixed(4)} ETH
-            </p>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">
-            Total revenue from ticket sales
-          </p>
-        </div>
-
-        <button
-          onClick={withdraw}
-          disabled={isPending || balanceInEth === 0}
-          className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
-            balanceInEth === 0 || isPending
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-green-600 text-white hover:bg-green-700 shadow-md hover:shadow-lg"
-          }`}
-        >
-          {isPending ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-              <span>Withdrawing...</span>
-            </>
-          ) : (
-            <>
-              <DollarSign className="w-5 h-5" />
-              <span>Withdraw All</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {balanceInEth === 0 && (
-        <div className="mt-3 text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded">
-          ⚠️ No funds available to withdraw
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Main Organizer View
 export default function OrganizerView() {
   const [showForm, setShowForm] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const { events, isLoading, refetch } = useGetEvents();
   const { createEvent, isPending, isSuccess, hash } = useCreateEvent();
 
@@ -257,7 +212,7 @@ export default function OrganizerView() {
         console.log("🔄 Refetching events...");
         refetch();
         setShowForm(false);
-        alert("Event berhasil dibuat! ✅");
+        setShowToast(true); 
       }, 2000);
 
       return () => clearTimeout(timer);
@@ -273,9 +228,18 @@ export default function OrganizerView() {
     console.log("🔄 Manual refresh triggered");
     refetch();
   };
+  const sortedEvents = [...events].sort((a, b) => b.id - a.id);
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {showToast && (
+        <Toast
+          message="Event berhasil dibuat!"
+          onClose={() => setShowToast(false)}
+        />
+      )}
+
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Event Management</h2>
@@ -305,9 +269,6 @@ export default function OrganizerView() {
         </div>
       </div>
 
-      {/* ✅ Contract Balance Card */}
-      <ContractBalanceCard />
-
       {showForm && (
         <CreateEventForm
           onClose={() => setShowForm(false)}
@@ -321,7 +282,7 @@ export default function OrganizerView() {
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="text-gray-600 mt-4">Loading events...</p>
         </div>
-      ) : events.length === 0 ? (
+      ) : sortedEvents.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <div className="text-6xl mb-4">🎪</div>
           <p className="text-gray-600 text-lg font-medium">Belum ada event</p>
@@ -331,7 +292,7 @@ export default function OrganizerView() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {events.map((event) => (
+          {sortedEvents.map((event) => (
             <EventSummaryCard key={event.id} event={event} eventId={event.id} />
           ))}
         </div>

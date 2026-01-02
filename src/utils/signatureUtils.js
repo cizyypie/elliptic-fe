@@ -274,8 +274,8 @@ export async function generateSignedQRData(
       event: eventData.eventName,
     });
 
-    // 1. Set deadline (5 minutes from now)
-    const deadline = Math.floor(Date.now() / 1000) + 300;
+    // 1. Set deadline (58s from now)
+    const deadline = Math.floor(Date.now() / 1000) + 58;
     console.log(
       "⏰ Deadline set to:",
       new Date(deadline * 1000).toLocaleString()
