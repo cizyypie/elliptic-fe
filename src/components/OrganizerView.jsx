@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, X, RefreshCw, CheckCircle } from "lucide-react";
 import {
   useGetEvents,
@@ -63,6 +63,15 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
     totalSupply: "",
   });
 
+  // Get today's date in YYYY-MM-DD format
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const handleSubmit = () => {
     if (
       formData.name &&
@@ -107,6 +116,7 @@ function CreateEventForm({ onClose, onCreate, isPending }) {
           <input
             type="date"
             value={formData.date}
+            min={getTodayDate()}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
@@ -183,39 +193,39 @@ export default function OrganizerView() {
   const toast = useToast();
   const { events, isLoading, refetch } = useGetEvents();
   const { createEvent, isPending, isSuccess, hash } = useCreateEvent();
+  const processedHashRef = useRef(null);
 
   useEffect(() => {
-    if (isSuccess && hash) {
+    if (isSuccess && hash && processedHashRef.current !== hash) {
       console.log("✅ Event created successfully! Hash:", hash);
+      processedHashRef.current = hash;
 
       toast.success(
         "Event Created! 🎉",
         "Your event has been created successfully",
-        { duration: 5000 }
+        { duration: 3000 },
       );
 
       const timer = setTimeout(() => {
         console.log("🔄 Refetching events...");
         refetch();
         setShowForm(false);
-        
-        toast.info(
-          "Event Active ✓",
-          "Your event is now visible to buyers",
-          { duration: 4000 }
-        );
+
+        toast.info("Event Active ✓", "Your event is now visible to buyers", {
+          duration: 4000,
+        });
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [isSuccess, hash, refetch, toast]);
+  }, [isSuccess, hash]);
 
   const handleCreateEvent = (formData) => {
     console.log("📝 Creating event with data:", formData);
-    
+
     const loadingToastId = toast.loading(
       "Creating Event",
-      "Processing your event creation..."
+      "Processing your event creation...",
     );
 
     try {
@@ -224,11 +234,11 @@ export default function OrganizerView() {
     } catch (error) {
       console.error("Error creating event:", error);
       toast.removeToast(loadingToastId);
-      
+
       toast.error(
         "Creation Failed",
         error.message || "Failed to create event",
-        { duration: 6000 }
+        { duration: 6000 },
       );
     }
   };
