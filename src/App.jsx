@@ -1,4 +1,4 @@
-// src/App.jsx - WITH TOAST PROVIDER
+// src/App.jsx - WITH TOAST PROVIDER AND QR DOWNLOAD
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -105,7 +105,7 @@ function Header({ role, setRole, address, owner, isOrganizer, toast }) {
   );
 }
 
-// QR CODE MODAL
+// QR CODE MODAL WITH DOWNLOAD FEATURE
 function QRCodeModal({ ticket, onClose }) {
   if (!ticket) return null;
 
@@ -116,6 +116,42 @@ function QRCodeModal({ ticket, onClose }) {
   // QR only contains the short payload
   const qrData = JSON.stringify(qrPayload || {});
 
+  // Download QR Code as PNG
+  const handleDownloadQR = () => {
+    const svg = document.getElementById("ticket-qr-code");
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    // Set canvas size (larger for better quality)
+    canvas.width = 800;
+    canvas.height = 800;
+
+    img.onload = () => {
+      // Fill white background
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw QR code
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      // Convert to PNG and download
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `ticket-${displayInfo?.tokenId || "qr"}-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      });
+    };
+
+    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl p-8 max-w-md w-full">
@@ -125,6 +161,7 @@ function QRCodeModal({ ticket, onClose }) {
 
         <div className="bg-white p-8 rounded-xl mb-4 flex justify-center">
           <QRCodeSVG
+            id="ticket-qr-code"
             value={qrData}
             size={320}
             level="M"
@@ -168,12 +205,24 @@ function QRCodeModal({ ticket, onClose }) {
           </p>
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition"
-        >
-          Tutup
-        </button>
+        <div className="space-y-2">
+          <button
+            onClick={handleDownloadQR}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download QR Code
+          </button>
+
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition"
+          >
+            Tutup
+          </button>
+        </div>
       </div>
     </div>
   );
