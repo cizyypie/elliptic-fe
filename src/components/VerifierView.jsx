@@ -1,4 +1,3 @@
-// src/components/VerifierView.jsx - IMPROVED QR SCANNER
 import { useState, useRef, useEffect } from "react";
 import {
   Camera,

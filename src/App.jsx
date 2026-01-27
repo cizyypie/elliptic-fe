@@ -1,3 +1,17 @@
+import { useState, useEffect } from "react";
+import { useAccount } from "wagmi";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { Ticket } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+
+import BuyerView from "./components/BuyerView";
+import OrganizerView from "./components/OrganizerView";
+import VerifierView from "./components/VerifierView";
+import { ToastProvider, useToast } from "./components/Toast";
+
+import { useGetContractOwner } from "./hooks/useContracts";
+
+// HEADER COMPONENT
 function Header({ role, setRole, address, owner, isOrganizer, toast }) {
   return (
     <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
