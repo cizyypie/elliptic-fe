@@ -1,5 +1,5 @@
-// src/components/VerifierView.jsx - WITH TOAST NOTIFICATIONS
-import { useState, useRef } from "react";
+// src/components/VerifierView.jsx - IMPROVED QR SCANNER
+import { useState, useRef, useEffect } from "react";
 import {
   Camera,
   Upload,
@@ -7,8 +7,8 @@ import {
   XCircle,
   Shield,
   AlertTriangle,
+  X,
 } from "lucide-react";
-import BarcodeScannerComponent from "react-qr-barcode-scanner";
 import { useWriteContract, usePublicClient } from "wagmi";
 import { CONTRACTS } from "../contracts/addresses";
 import QrScanner from "qr-scanner";
@@ -47,7 +47,7 @@ function normalizeQRData(raw) {
   return raw;
 }
 
-// ================= QR SCANNER + IMAGE UPLOAD =================
+// ================= IMPROVED QR SCANNER =================
 function QRScanner({
   onScanSuccess,
   scanning,
@@ -55,40 +55,91 @@ function QRScanner({
   scanError,
   setScanError,
 }) {
+  const videoRef = useRef(null);
+  const qrScannerRef = useRef(null);
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const toast = useToast();
 
-  const handleScan = (err, result) => {
-    if (result?.text) {
-      try {
-        const raw = JSON.parse(result.text);
-        const qrData = normalizeQRData(raw);
-        console.log("📱 QR from camera:", qrData);
-        
-        toast.success(
-          "QR Code Detected ✓",
-          "Processing ticket verification...",
-          { duration: 2000 }
-        );
-        
-        onScanSuccess(qrData);
-        setScanning(false);
-        setScanError(null);
-      } catch (error) {
-        console.error("❌ Parse error:", error);
-        setScanError("QR Code tidak valid");
-        toast.error(
-          "Invalid QR Code",
-          "Could not read QR code data",
-          { duration: 4000 }
-        );
-        setTimeout(() => setScanError(null), 3000);
-      }
-    }
-  };
+  // Initialize QR Scanner when camera starts
+  useEffect(() => {
+    if (scanning && videoRef.current) {
+      console.log("📷 Starting camera...");
+      
+      // Create QR Scanner instance
+      qrScannerRef.current = new QrScanner(
+        videoRef.current,
+        (result) => {
+          console.log("✅ QR Code detected:", result.data);
+          try {
+            const raw = JSON.parse(result.data);
+            const qrData = normalizeQRData(raw);
+            console.log("📱 QR from camera:", qrData);
+            
+            toast.success(
+              "QR Code Detected ✓",
+              "Processing ticket verification...",
+              { duration: 2000 }
+            );
+            
+            onScanSuccess(qrData);
+            setScanning(false);
+            setScanError(null);
+          } catch (error) {
+            console.error("❌ Parse error:", error);
+            setScanError("QR Code tidak valid");
+            toast.error(
+              "Invalid QR Code",
+              "Could not read QR code data",
+              { duration: 4000 }
+            );
+            setTimeout(() => setScanError(null), 3000);
+          }
+        },
+        {
+          returnDetailedScanResult: true,
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          preferredCamera: 'environment', // Use back camera on mobile
+          maxScansPerSecond: 5, // Scan more frequently
+        }
+      );
 
-  // ✅ Handle image upload with qr-scanner library
+      // Start scanning
+      qrScannerRef.current
+        .start()
+        .then(() => {
+          console.log("✅ Camera started successfully");
+          setCameraReady(true);
+          toast.info("Camera Active", "Point camera at QR code", {
+            duration: 3000,
+          });
+        })
+        .catch((err) => {
+          console.error("❌ Camera error:", err);
+          setScanError("Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.");
+          toast.error(
+            "Camera Error",
+            "Could not access camera. Please check permissions.",
+            { duration: 5000 }
+          );
+        });
+
+      // Cleanup
+      return () => {
+        if (qrScannerRef.current) {
+          console.log("🛑 Stopping camera...");
+          qrScannerRef.current.stop();
+          qrScannerRef.current.destroy();
+          qrScannerRef.current = null;
+          setCameraReady(false);
+        }
+      };
+    }
+  }, [scanning]);
+
+  // Handle image upload with qr-scanner library
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -166,12 +217,7 @@ function QRScanner({
       {!scanning ? (
         <div className="space-y-4">
           <button
-            onClick={() => {
-              setScanning(true);
-              toast.info("Camera Active", "Point camera at QR code", {
-                duration: 3000,
-              });
-            }}
+            onClick={() => setScanning(true)}
             disabled={uploading}
             className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2 transition disabled:bg-gray-400"
           >
@@ -188,7 +234,7 @@ function QRScanner({
             </div>
           </div>
 
-          {/* ✅ Image Upload */}
+          {/* Image Upload */}
           <label
             className={`w-full bg-green-600 text-white py-4 rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2 transition cursor-pointer ${
               uploading ? "opacity-50 cursor-not-allowed" : ""
@@ -208,42 +254,90 @@ function QRScanner({
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-xs text-blue-800 font-semibold mb-1">
-              {" "}
-              ⚠️Warning:
+              💡 Tips untuk Scanning:
             </p>
             <p className="text-xs text-blue-700">
-              • Metode upload foto hanya untuk pengujian
-              <br />• Untuk production sebaiknya hanya menggunakan QR Code
+              • Pastikan QR code terlihat jelas dan tidak blur
+              <br />
+              • Gunakan pencahayaan yang cukup
+              <br />
+              • Tahan kamera tetap stabil
+              <br />
+              • Jarak ideal: 15-30cm dari QR code
             </p>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="bg-gray-900 rounded-lg overflow-hidden relative">
-            <BarcodeScannerComponent
-              width="100%"
-              height={400}
-              onUpdate={handleScan}
-              stopStream={!scanning}
+          <div className="bg-black rounded-lg overflow-hidden relative" style={{ aspectRatio: '4/3' }}>
+            {/* Video element for camera feed */}
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover"
+              playsInline
+              muted
             />
 
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="w-64 h-64 border-4 border-green-500 rounded-lg" />
-            </div>
+            {/* Scanning overlay */}
+            {cameraReady && (
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="relative">
+                  {/* Scanning frame */}
+                  <div className="w-64 h-64 border-4 border-green-500 rounded-lg relative">
+                    {/* Corner markers */}
+                    <div className="absolute -top-1 -left-1 w-8 h-8 border-t-8 border-l-8 border-green-400"></div>
+                    <div className="absolute -top-1 -right-1 w-8 h-8 border-t-8 border-r-8 border-green-400"></div>
+                    <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-8 border-l-8 border-green-400"></div>
+                    <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-8 border-r-8 border-green-400"></div>
+                  </div>
+                  
+                  {/* Scanning line animation */}
+                  <div className="absolute top-0 left-0 w-full h-1 bg-green-400 animate-scan"></div>
+                </div>
+              </div>
+            )}
+
+            {!cameraReady && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-3" />
+                  <p className="text-white font-semibold">Starting Camera...</p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="text-center text-sm text-gray-600 bg-gray-50 p-3 rounded">
-            <p>📷 Posisikan QR code di dalam kotak</p>
+            <p>📷 Posisikan QR code di dalam kotak hijau</p>
           </div>
 
           <button
             onClick={() => setScanning(false)}
-            className="w-full bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition"
+            className="w-full bg-gray-600 text-white py-3 rounded-lg font-semibold hover:bg-gray-700 transition flex items-center justify-center gap-2"
           >
+            <X className="w-5 h-5" />
             Tutup Kamera
           </button>
         </div>
       )}
+
+      {/* Add scanning animation CSS */}
+      <style jsx>{`
+        @keyframes scan {
+          0% {
+            top: 0;
+          }
+          50% {
+            top: 100%;
+          }
+          100% {
+            top: 0;
+          }
+        }
+        .animate-scan {
+          animation: scan 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 }
