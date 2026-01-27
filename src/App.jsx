@@ -1,4 +1,3 @@
-// src/App.jsx - WITH TOAST PROVIDER AND QR DOWNLOAD
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -12,7 +11,6 @@ import { ToastProvider, useToast } from "./components/Toast";
 
 import { useGetContractOwner } from "./hooks/useContracts";
 
-// HEADER COMPONENT
 function Header({ role, setRole, address, owner, isOrganizer, toast }) {
   return (
     <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
@@ -124,16 +122,16 @@ function QRCodeModal({ ticket, onClose }) {
     const ctx = canvas.getContext("2d");
     const img = new Image();
 
-    // Set canvas size (larger for better quality)
-    canvas.width = 800;
-    canvas.height = 800;
+    // Set canvas size to match QR size (1000x1000 for high quality)
+    canvas.width = 1000;
+    canvas.height = 1000;
 
     img.onload = () => {
       // Fill white background
       ctx.fillStyle = "#FFFFFF";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       
-      // Draw QR code
+      // Draw QR code centered
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       // Convert to PNG and download
@@ -159,15 +157,16 @@ function QRCodeModal({ ticket, onClose }) {
           {isSigned ? "🔐 Signed QR Code" : "⚠️ Unsigned QR Code"}
         </h2>
 
-        <div className="bg-white p-8 rounded-xl mb-4 flex justify-center">
+        <div className="bg-white p-4 rounded-xl mb-4 flex justify-center">
           <QRCodeSVG
             id="ticket-qr-code"
             value={qrData}
-            size={320}
-            level="M"
+            size={400}
+            level="L"
             bgColor="#FFFFFF"
             fgColor="#000000"
             includeMargin={true}
+            marginSize={4}
           />
         </div>
 
@@ -367,7 +366,6 @@ function AppContent() {
   );
 }
 
-// Wrap AppContent with ToastProvider
 export default function App() {
   return (
     <ToastProvider>
