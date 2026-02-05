@@ -1,4 +1,270 @@
 
+---
+# 🎫 elliptiCheck - Blockchain-Based NFT Ticket Verification System
+
+## 📖 About elliptiCheck
+The digital ticketing industry currently faces serious problems:
+
+- **❌ Ticket Forgery** - Fake tickets are easy to create and hard to detect
+- **❌ QR Code Screenshots** - QR Codes can be screenshotted and reused multiple times
+- **❌ Unauthorized Use** - Tickets can be used by non-legitimate owners
+- **❌ Replay Attacks** - The same QR Code can be scanned repeatedly
+- **❌ Duplication** - No guarantee of ticket uniqueness
+
+**elliptiCheck provides a solution** using blockchain and cryptography to ensure every ticket is **authentic**, **unique**, and **only usable by legitimate owners**.
+
+---
+
+## 🔐 How Does elliptiCheck Security?
+
+### Multi-Layer Security Flow
+
+```
+1. TICKET PURCHASE
+   ↓
+   Ticket recorded as NFT on blockchain
+   (Cannot be forged or deleted)
+
+2. QR CODE GENERATION
+   ↓
+   a. System creates ticket metadata hash
+   b. User signs with ECDSA (private key)
+   c. QR Code contains: signature + public key + deadline (58 seconds)
+   ↓
+   Generated QR Code is UNIQUE and ENCRYPTED
+
+3. VERIFICATION AT ENTRANCE
+   ↓
+   a. Scan QR Code
+   b. Check if still within deadline (58 seconds)
+   c. Verify ECDSA signature (signed by legitimate owner?)
+   d. Check NFT ownership on blockchain
+   e. Check if QR has been used before (digest tracking)
+   ↓
+   If ALL checks pass → Ticket VALID ✅
+   If ANY check fails → Ticket REJECTED ❌
+```
+
+### Why Is This Secure?
+
+1. **ECDSA Signature** → Only private key owner can create valid signature
+2. **EIP-712 Typed Data** → Signed data is transparent and structured
+3. **58-second Deadline** → Screenshots will expire
+4. **Digest Tracking** → Same QR Code cannot be used twice
+5. **On-Chain Verification** → NFT ownership verified directly on blockchain
+
+**Result:** A **cryptographically secure** and **replay-resistant** system
+
+---
+
+## ✨ Key Features
+
+### For Buyers
+- 🎟️ **Buy NFT Tickets** - Tickets permanently recorded on blockchain
+- 📱 **Generate Secure QR Code** - QR Code with ECDSA digital signature
+- 🗂️ **Manage Tickets** - Complete dashboard for all owned tickets
+- ⏱️ **Dynamic QR Code** - Each QR Code valid for 58 seconds for maximum security
+
+### For Organizers
+- 🎪 **Create Events** - Easily add new events
+- 📊 **Monitor Sales** - View tickets sold and revenue in real-time
+- ✅ **Verify Tickets** - Scan and validate tickets with cryptographic technology
+- 🔍 **Fraud Detection** - System automatically rejects fake, expired, or replay attack tickets
+
+---
+
+## 🚀 How to Use
+
+### Initial Setup
+1. Install a browser wallet like [MetaMask](https://metamask.io/)
+2. Open elliptiCheck app in browser
+3. Click **"Connect Wallet"** button in top right corner
+4. Approve connection in MetaMask
+
+---
+
+### 🛒 As a Buyer
+
+#### 1. Buying Tickets
+```
+a. View event list on "Buyer" page
+b. Click "Buy Ticket" button on desired event
+c. Confirm transaction in wallet (pay with ETH)
+d. Wait for blockchain confirmation (~5-10 seconds)
+e. NFT ticket will appear in "My Tickets" tab
+```
+
+#### 2. Generate QR Code for Event Entry
+```
+a. Open "My Tickets" tab
+b. Click "Show QR Code" button on ticket you want to use
+c. Approve signature request in wallet (FREE, no gas fee)
+d. QR Code will appear and valid for 58 seconds
+e. Show QR Code to staff at entrance
+```
+
+⚠️ **IMPORTANT:**
+- Generate QR Code **only when at the entrance** (valid for 58 seconds)
+- Each generation creates a new unique QR Code
+
+---
+
+### 🎪 As an Organizer
+
+#### 1. Creating New Event
+```
+a. Click "Organizer" tab in top menu
+b. Click "Create New Event" button
+c. Fill form:
+   - Event Name
+   - Date (must be future date)
+   - Location
+   - Ticket Price (in ETH)
+   - Total Available Tickets
+d. Click "Create Event"
+e. Confirm transaction in wallet
+f. Event will appear in list
+```
+
+#### 2. Monitor Sales
+```
+a. In "Organizer" dashboard, view each event card
+b. Displayed information:
+   - Tickets sold / Total tickets
+   - Total revenue (in ETH)
+   - Event status (Active/Inactive)
+c. Click refresh button for latest data
+```
+
+#### 3. Verify Visitor Tickets
+```
+a. Click "Verifier" tab in top menu
+b. Click "Scan QR Code" button
+c. Allow camera access when browser prompts
+d. Point camera at visitor's QR Code
+   (or click "Upload QR Image" to upload photo)
+e. System will automatically:
+   - Verify ECDSA signature
+   - Check NFT ownership
+   - Check if already used
+   - Check deadline
+f. Verification result will appear:
+   - ✅ VALID → Visitor may enter
+   - ❌ INVALID → Shows rejection reason
+```
+
+**Possible Rejection Status:**
+- ⏰ **Expired** - QR Code exceeded 58 seconds
+- 🚫 **Not Owner** - QR Code doesn't belong to legitimate NFT owner
+- ♻️ **Already Used** - Ticket has been used before
+- 🔁 **Replay Attack** - Same QR Code used again
+- ❌ **Invalid Signature** - Digital signature is invalid
+
+---
+
+## 📋 Smart Contract Repository
+
+Smart contract repository and complete installation guide available at:
+
+👉 **[elliptiCheck Smart Contract Repository](https://github.com/cizyypie/ellipticheck-smartcontract)**
+
+> **Note:** To run the system locally (development), you need to:
+> 1. Clone smart contract repository
+> 2. Deploy smart contract to local blockchain (Anvil)
+> 3. Update contract address in frontend
+> 
+> Complete installation and deployment guide available in smart contract repository.
+
+---
+
+## 🛠️ Tech Stack
+
+**Frontend:**
+- React.js - UI Framework
+- Viem - Ethereum interactions
+- Wagmi - React Hooks for Ethereum
+- RainbowKit - Wallet connection
+- Tailwind CSS - Styling
+- qrcode.react - QR Code generation
+- qr-scanner - QR Code scanning
+
+**Blockchain:**
+- Solidity - Smart contract language
+- Ethereum - Blockchain platform
+- Foundry - Smart contract development & testing
+- Anvil - Local Ethereum node
+
+**Security:**
+- ECDSA (secp256k1) - Digital signature algorithm
+- EIP-712 - Typed structured data signing
+- Keccak256 - Cryptographic hashing
+
+---
+
+## ⚠️ System Limitations & Areas for Improvement
+
+elliptiCheck currently has several limitations that can be further developed:
+
+### 1. **Gas Fee Efficiency**
+- ❌ **Issue:** Manual ECDSA verification implementation in smart contract consumes high gas
+- ✅ **Solution:** Use Ethereum's built-in `ecrecover` or optimized OpenZeppelin libraries
+
+### 2. **Scalability**
+- ❌ **Issue:** Not tested at large scale (thousands of tickets, hundreds of simultaneous events)
+- ✅ **Solution:** Implement Layer 2 (Polygon, Arbitrum) or optimize smart contracts
+
+### 3. **User Experience**
+- ❌ **Issue:** Users must approve twice when generating QR Code (signature request + public key extraction)
+- ✅ **Solution:** Implement signature caching or session-based signing
+
+### 4. **Mobile Optimization**
+- ❌ **Issue:** QR scanner camera not optimal on all mobile devices
+- ✅ **Solution:** Implement native mobile app or PWA with native camera API
+
+### 5. **Recovery Mechanism**
+- ❌ **Issue:** If user loses private key, ticket is lost forever
+- ✅ **Solution:** Implement social recovery or multi-sig wallet
+
+### 6. **Deadline Flexibility**
+- ❌ **Issue:** 58-second deadline is fixed, cannot be adjusted per event
+- ✅ **Solution:** Add configurable deadline parameter per event
+
+### 7. **Secondary Market**
+- ❌ **Issue:** No resale/transfer feature between users
+- ✅ **Solution:** Implement marketplace with royalty for organizers
+
+### 8. **Testnet/Mainnet Deployment**
+- ❌ **Issue:** System only tested on local blockchain (Anvil)
+- ✅ **Solution:** Deploy and test on testnet (Sepolia/Goerli) before production
+
+### 9. **Error Handling**
+- ❌ **Issue:** Some error messages are too technical for end-users
+- ✅ **Solution:** Implement user-friendly error messages and help tooltips
+
+### 10. **Analytics & Reporting**
+- ❌ **Issue:** No sales data export or attendance report feature
+- ✅ **Solution:** Add analytics dashboard and export to CSV/PDF
+
+---
+
+**Note:** This system is a proof-of-concept and academic research. For production use, smart contract security audit and extensive testing are required.
+
+---
+
+## 📄 License
+
+MIT License - Free to use for educational and development purposes
+
+---
+
+## 👨‍💻 Contributors
+
+Developed as part of academic research on blockchain-based ticketing systems with cryptographic security.
+
+**⚡ elliptiCheck - Secure, Transparent, Decentralized Ticketing**
+---
+# Bahasa Indonesia
+----
 # 🎫 elliptiCheck - Sistem Verifikasi Tiket NFT Berbasis Blockchain
 
 Industri tiket digital saat ini menghadapi masalah serius:
@@ -261,274 +527,3 @@ Developed as part of academic research on blockchain-based ticketing systems wit
 ---
 
 **⚡ elliptiCheck - Secure, Transparent, Decentralized Ticketing**
-
----
-# 🎫 elliptiCheck - Blockchain-Based NFT Ticket Verification System
-
-## 📖 About elliptiCheck
-
-### Why Was elliptiCheck Created?
-
-The digital ticketing industry currently faces serious problems:
-
-- **❌ Ticket Forgery** - Fake tickets are easy to create and hard to detect
-- **❌ QR Code Screenshots** - QR Codes can be screenshotted and reused multiple times
-- **❌ Unauthorized Use** - Tickets can be used by non-legitimate owners
-- **❌ Replay Attacks** - The same QR Code can be scanned repeatedly
-- **❌ Duplication** - No guarantee of ticket uniqueness
-
-**elliptiCheck provides a solution** using blockchain and cryptography to ensure every ticket is **authentic**, **unique**, and **only usable by legitimate owners**.
-
----
-
-## 🔐 How Does elliptiCheck Guarantee Security?
-
-### Multi-Layer Security Flow
-
-```
-1. TICKET PURCHASE
-   ↓
-   Ticket recorded as NFT on blockchain
-   (Cannot be forged or deleted)
-
-2. QR CODE GENERATION
-   ↓
-   a. System creates ticket metadata hash
-   b. User signs with ECDSA (private key)
-   c. QR Code contains: signature + public key + deadline (58 seconds)
-   ↓
-   Generated QR Code is UNIQUE and ENCRYPTED
-
-3. VERIFICATION AT ENTRANCE
-   ↓
-   a. Scan QR Code
-   b. Check if still within deadline (58 seconds)
-   c. Verify ECDSA signature (signed by legitimate owner?)
-   d. Check NFT ownership on blockchain
-   e. Check if QR has been used before (digest tracking)
-   ↓
-   If ALL checks pass → Ticket VALID ✅
-   If ANY check fails → Ticket REJECTED ❌
-```
-
-### Why Is This Secure?
-
-1. **ECDSA Signature** → Only private key owner can create valid signature
-2. **EIP-712 Typed Data** → Signed data is transparent and structured
-3. **58-second Deadline** → Screenshots will expire
-4. **Digest Tracking** → Same QR Code cannot be used twice
-5. **On-Chain Verification** → NFT ownership verified directly on blockchain
-
-**Result:** A **cryptographically secure** and **replay-resistant** system
-
----
-
-## ✨ Key Features
-
-### For Buyers
-- 🎟️ **Buy NFT Tickets** - Tickets permanently recorded on blockchain
-- 📱 **Generate Secure QR Code** - QR Code with ECDSA digital signature
-- 🗂️ **Manage Tickets** - Complete dashboard for all owned tickets
-- ⏱️ **Dynamic QR Code** - Each QR Code valid for 58 seconds for maximum security
-
-### For Organizers
-- 🎪 **Create Events** - Easily add new events
-- 📊 **Monitor Sales** - View tickets sold and revenue in real-time
-- ✅ **Verify Tickets** - Scan and validate tickets with cryptographic technology
-- 🔍 **Fraud Detection** - System automatically rejects fake, expired, or replay attack tickets
-
----
-
-## 🚀 How to Use
-
-### Initial Setup
-1. Install a browser wallet like [MetaMask](https://metamask.io/)
-2. Open elliptiCheck app in browser
-3. Click **"Connect Wallet"** button in top right corner
-4. Approve connection in MetaMask
-
----
-
-### 🛒 As a Buyer
-
-#### 1. Buying Tickets
-```
-a. View event list on "Buyer" page
-b. Click "Buy Ticket" button on desired event
-c. Confirm transaction in wallet (pay with ETH)
-d. Wait for blockchain confirmation (~5-10 seconds)
-e. NFT ticket will appear in "My Tickets" tab
-```
-
-#### 2. Generate QR Code for Event Entry
-```
-a. Open "My Tickets" tab
-b. Click "Show QR Code" button on ticket you want to use
-c. Approve signature request in wallet (FREE, no gas fee)
-d. QR Code will appear and valid for 58 seconds
-e. Show QR Code to staff at entrance
-```
-
-⚠️ **IMPORTANT:**
-- Generate QR Code **only when at the entrance** (valid for 58 seconds)
-- Don't screenshot QR Code (will expire and become invalid)
-- Each generation creates a new unique QR Code
-
----
-
-### 🎪 As an Organizer
-
-#### 1. Creating New Event
-```
-a. Click "Organizer" tab in top menu
-b. Click "Create New Event" button
-c. Fill form:
-   - Event Name
-   - Date (must be future date)
-   - Location
-   - Ticket Price (in ETH)
-   - Total Available Tickets
-d. Click "Create Event"
-e. Confirm transaction in wallet
-f. Event will appear in list
-```
-
-#### 2. Monitor Sales
-```
-a. In "Organizer" dashboard, view each event card
-b. Displayed information:
-   - Tickets sold / Total tickets
-   - Total revenue (in ETH)
-   - Event status (Active/Inactive)
-c. Click refresh button for latest data
-```
-
-#### 3. Verify Visitor Tickets
-```
-a. Click "Verifier" tab in top menu
-b. Click "Scan QR Code" button
-c. Allow camera access when browser prompts
-d. Point camera at visitor's QR Code
-   (or click "Upload QR Image" to upload photo)
-e. System will automatically:
-   - Verify ECDSA signature
-   - Check NFT ownership
-   - Check if already used
-   - Check deadline
-f. Verification result will appear:
-   - ✅ VALID → Visitor may enter
-   - ❌ INVALID → Shows rejection reason
-```
-
-**Possible Rejection Status:**
-- ⏰ **Expired** - QR Code exceeded 58 seconds
-- 🚫 **Not Owner** - QR Code doesn't belong to legitimate NFT owner
-- ♻️ **Already Used** - Ticket has been used before
-- 🔁 **Replay Attack** - Same QR Code used again
-- ❌ **Invalid Signature** - Digital signature is invalid
-
----
-
-## 📋 Smart Contract Repository
-
-Smart contract repository and complete installation guide available at:
-
-👉 **[elliptiCheck Smart Contract Repository](https://github.com/cizyypie/ellipticheck-smartcontract)**
-
-> **Note:** To run the system locally (development), you need to:
-> 1. Clone smart contract repository
-> 2. Deploy smart contract to local blockchain (Anvil)
-> 3. Update contract address in frontend
-> 
-> Complete installation and deployment guide available in smart contract repository.
-
----
-
-## 🛠️ Tech Stack
-
-**Frontend:**
-- React.js - UI Framework
-- Viem - Ethereum interactions
-- Wagmi - React Hooks for Ethereum
-- RainbowKit - Wallet connection
-- Tailwind CSS - Styling
-- qrcode.react - QR Code generation
-- qr-scanner - QR Code scanning
-
-**Blockchain:**
-- Solidity - Smart contract language
-- Ethereum - Blockchain platform
-- Foundry - Smart contract development & testing
-- Anvil - Local Ethereum node
-
-**Security:**
-- ECDSA (secp256k1) - Digital signature algorithm
-- EIP-712 - Typed structured data signing
-- Keccak256 - Cryptographic hashing
-
----
-
-## ⚠️ System Limitations & Areas for Improvement
-
-elliptiCheck currently has several limitations that can be further developed:
-
-### 1. **Gas Fee Efficiency**
-- ❌ **Issue:** Manual ECDSA verification implementation in smart contract consumes high gas
-- ✅ **Solution:** Use Ethereum's built-in `ecrecover` or optimized OpenZeppelin libraries
-
-### 2. **Scalability**
-- ❌ **Issue:** Not tested at large scale (thousands of tickets, hundreds of simultaneous events)
-- ✅ **Solution:** Implement Layer 2 (Polygon, Arbitrum) or optimize smart contracts
-
-### 3. **User Experience**
-- ❌ **Issue:** Users must approve twice when generating QR Code (signature request + public key extraction)
-- ✅ **Solution:** Implement signature caching or session-based signing
-
-### 4. **Mobile Optimization**
-- ❌ **Issue:** QR scanner camera not optimal on all mobile devices
-- ✅ **Solution:** Implement native mobile app or PWA with native camera API
-
-### 5. **Recovery Mechanism**
-- ❌ **Issue:** If user loses private key, ticket is lost forever
-- ✅ **Solution:** Implement social recovery or multi-sig wallet
-
-### 6. **Deadline Flexibility**
-- ❌ **Issue:** 58-second deadline is fixed, cannot be adjusted per event
-- ✅ **Solution:** Add configurable deadline parameter per event
-
-### 7. **Secondary Market**
-- ❌ **Issue:** No resale/transfer feature between users
-- ✅ **Solution:** Implement marketplace with royalty for organizers
-
-### 8. **Testnet/Mainnet Deployment**
-- ❌ **Issue:** System only tested on local blockchain (Anvil)
-- ✅ **Solution:** Deploy and test on testnet (Sepolia/Goerli) before production
-
-### 9. **Error Handling**
-- ❌ **Issue:** Some error messages are too technical for end-users
-- ✅ **Solution:** Implement user-friendly error messages and help tooltips
-
-### 10. **Analytics & Reporting**
-- ❌ **Issue:** No sales data export or attendance report feature
-- ✅ **Solution:** Add analytics dashboard and export to CSV/PDF
-
----
-
-**Note:** This system is a proof-of-concept and academic research. For production use, smart contract security audit and extensive testing are required.
-
----
-
-## 📄 License
-
-MIT License - Free to use for educational and development purposes
-
----
-
-## 👨‍💻 Contributors
-
-Developed as part of academic research on blockchain-based ticketing systems with cryptographic security.
-
----
-
-**⚡ elliptiCheck - Secure, Transparent, Decentralized Ticketing**
-```
