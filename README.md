@@ -1,9 +1,5 @@
-```markdown
-# 🎫 Ellipticheck - Sistem Verifikasi Tiket NFT Berbasis Blockchain
 
-## 📖 Tentang Ellipticheck
-
-### Mengapa Ellipticheck Dibuat?
+# 🎫 elliptiCheck - Sistem Verifikasi Tiket NFT Berbasis Blockchain
 
 Industri tiket digital saat ini menghadapi masalah serius:
 
@@ -13,11 +9,11 @@ Industri tiket digital saat ini menghadapi masalah serius:
 - **❌ Replay Attack** - QR Code yang sama dapat dipindai berkali-kali
 - **❌ Duplikasi** - Tidak ada jaminan keunikan tiket
 
-**Ellipticheck hadir sebagai solusi** menggunakan teknologi blockchain dan kriptografi untuk memastikan setiap tiket **asli**, **unik**, dan **hanya dapat digunakan oleh pemilik yang sah**.
+**elliptiCheck hadir sebagai solusi** menggunakan teknologi blockchain dan kriptografi untuk memastikan setiap tiket **asli**, **unik**, dan **hanya dapat digunakan oleh pemilik yang sah**.
 
 ---
 
-## 🔐 Bagaimana Ellipticheck Menjamin Keamanan?
+## 🔐 Bagaimana elliptiCheck Menjamin Keamanan?
 
 ### Alur Sistem Keamanan Berlapis
 
@@ -57,7 +53,6 @@ Industri tiket digital saat ini menghadapi masalah serius:
 
 **Hasil:** Sistem yang **cryptographically secure** dan **replay-resistant**
 
----
 
 ## ✨ Fitur Utama
 
@@ -79,7 +74,7 @@ Industri tiket digital saat ini menghadapi masalah serius:
 
 ### Persiapan Awal
 1. Install wallet browser seperti [MetaMask](https://metamask.io/)
-2. Buka aplikasi Ellipticheck di browser
+2. Buka aplikasi elliptiCheck di browser
 3. Klik tombol **"Connect Wallet"** di pojok kanan atas
 4. Approve koneksi di MetaMask
 
@@ -107,7 +102,6 @@ e. Tunjukkan QR Code ke petugas di pintu masuk
 
 ⚠️ **PENTING:**
 - Generate QR Code **hanya saat sudah di pintu masuk** (berlaku 58 detik)
-- Jangan screenshot QR Code (akan expired dan tidak valid)
 - Setiap kali generate akan menghasilkan QR Code baru yang unik
 
 ---
@@ -169,7 +163,7 @@ f. Hasil verifikasi akan muncul:
 
 Repository smart contract dan panduan instalasi lengkap tersedia di:
 
-👉 **[Ellipticheck Smart Contract Repository](https://github.com/yourusername/ellipticheck-contracts)**
+👉 **[elliptiCheck Smart Contract Repository](https://github.com/cizyypie/ellipticheck-smartcontract)**
 
 > **Catatan:** Untuk menjalankan sistem secara lokal (development), Anda perlu:
 > 1. Clone repository smart contract
@@ -206,7 +200,7 @@ Repository smart contract dan panduan instalasi lengkap tersedia di:
 
 ## ⚠️ Keterbatasan Sistem & Area Improvement
 
-Sistem Ellipticheck saat ini masih memiliki beberapa keterbatasan yang dapat dikembangkan lebih lanjut:
+Sistem elliptiCheck saat ini masih memiliki beberapa keterbatasan yang dapat dikembangkan lebih lanjut:
 
 ### 1. **Efisiensi Gas Fee**
 - ❌ **Masalah:** Implementasi manual ECDSA verification di smart contract mengonsumsi gas yang tinggi
@@ -266,17 +260,14 @@ Developed as part of academic research on blockchain-based ticketing systems wit
 
 ---
 
-**⚡ Ellipticheck - Secure, Transparent, Decentralized Ticketing**
-```
+**⚡ elliptiCheck - Secure, Transparent, Decentralized Ticketing**
 
 ---
+# 🎫 elliptiCheck - Blockchain-Based NFT Ticket Verification System
 
-```markdown
-# 🎫 Ellipticheck - Blockchain-Based NFT Ticket Verification System
+## 📖 About elliptiCheck
 
-## 📖 About Ellipticheck
-
-### Why Was Ellipticheck Created?
+### Why Was elliptiCheck Created?
 
 The digital ticketing industry currently faces serious problems:
 
@@ -286,11 +277,11 @@ The digital ticketing industry currently faces serious problems:
 - **❌ Replay Attacks** - The same QR Code can be scanned repeatedly
 - **❌ Duplication** - No guarantee of ticket uniqueness
 
-**Ellipticheck provides a solution** using blockchain and cryptography to ensure every ticket is **authentic**, **unique**, and **only usable by legitimate owners**.
+**elliptiCheck provides a solution** using blockchain and cryptography to ensure every ticket is **authentic**, **unique**, and **only usable by legitimate owners**.
 
 ---
 
-## 🔐 How Does Ellipticheck Guarantee Security?
+## 🔐 How Does elliptiCheck Guarantee Security?
 
 ### Multi-Layer Security Flow
 
@@ -352,7 +343,7 @@ The digital ticketing industry currently faces serious problems:
 
 ### Initial Setup
 1. Install a browser wallet like [MetaMask](https://metamask.io/)
-2. Open Ellipticheck app in browser
+2. Open elliptiCheck app in browser
 3. Click **"Connect Wallet"** button in top right corner
 4. Approve connection in MetaMask
 
@@ -442,7 +433,7 @@ f. Verification result will appear:
 
 Smart contract repository and complete installation guide available at:
 
-👉 **[Ellipticheck Smart Contract Repository](https://github.com/yourusername/ellipticheck-contracts)**
+👉 **[elliptiCheck Smart Contract Repository](https://github.com/cizyypie/ellipticheck-smartcontract)**
 
 > **Note:** To run the system locally (development), you need to:
 > 1. Clone smart contract repository
@@ -479,7 +470,7 @@ Smart contract repository and complete installation guide available at:
 
 ## ⚠️ System Limitations & Areas for Improvement
 
-Ellipticheck currently has several limitations that can be further developed:
+elliptiCheck currently has several limitations that can be further developed:
 
 ### 1. **Gas Fee Efficiency**
 - ❌ **Issue:** Manual ECDSA verification implementation in smart contract consumes high gas
@@ -539,5 +530,5 @@ Developed as part of academic research on blockchain-based ticketing systems wit
 
 ---
 
-**⚡ Ellipticheck - Secure, Transparent, Decentralized Ticketing**
+**⚡ elliptiCheck - Secure, Transparent, Decentralized Ticketing**
 ```
