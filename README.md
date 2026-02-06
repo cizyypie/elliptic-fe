@@ -10,6 +10,7 @@ The digital ticketing industry currently faces serious problems:
 elliptiCheck provides a solution using blockchain and cryptography to ensure every ticket is authentic, unique, and only usable by legitimate owners.
 
 ---
+quick preview video will appear below:
 
 ## How Does elliptiCheck Ensure Security?
 
