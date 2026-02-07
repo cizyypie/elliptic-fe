@@ -1,10 +1,8 @@
-// src/wagmi-config.ts (or .js)
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { defineChain } from "viem";
 
-// 👇 Adjust chainId / rpc URLs to match your Anvil setup
 export const anvil = defineChain({
-  id: 31337, // default anvil chainId (same as hardhat)
+  id: 31337, 
   name: "Anvil Local",
   nativeCurrency: {
     name: "Ether",

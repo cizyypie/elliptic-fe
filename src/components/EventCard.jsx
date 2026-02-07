@@ -1,4 +1,3 @@
-// src/components/EventCard.jsx
 import { Calendar, MapPin, DollarSign, Ticket } from "lucide-react";
 
 export default function EventCard({ event, onBuyTicket, isPending }) {

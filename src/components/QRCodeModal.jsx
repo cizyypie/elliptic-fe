@@ -1,4 +1,3 @@
-// src/components/QRScanner.jsx - Enhanced with Full Verification
 import { useState } from "react";
 import { Camera, Search, Shield, AlertTriangle } from "lucide-react";
 import BarcodeScannerComponent from "react-qr-barcode-scanner";

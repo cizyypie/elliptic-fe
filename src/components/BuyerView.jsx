@@ -1,4 +1,3 @@
-// src/components/BuyerView.jsx - WITH TOAST NOTIFICATIONS
 import { useState, useEffect } from "react";
 import { Calendar, MapPin, DollarSign, Ticket } from "lucide-react";
 import {

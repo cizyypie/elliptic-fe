@@ -362,7 +362,7 @@ function VerificationResult({ result, onClose }) {
             }`}
           >
             {isSuccess
-              ? "✅ Tiket Valid & Terverifikasi!"
+              ? "Tiket Valid & Terverifikasi!"
               : "❌ Verifikasi Gagal"}
           </h2>
         </div>
@@ -602,15 +602,15 @@ export default function VerifierView() {
         });
       } else {
         toast.error(
-          "Transaction Failed",
-          "Verification transaction did not complete successfully",
+          "Gagal Memproses di Blockchain",
+          "Transaksi terhenti, Silakan scan ulang.",
           { duration: 6000 }
         );
         
         setVerificationResult({
           valid: false,
-          reason: "❌ Tx gagal",
-          details: "Transaction failed",
+          reason: "⚠️ Gangguan Jaringan",
+          details: "Transaksi on-chain gagal dieksekusi. Coba lagi.",
           type: "tx_failed",
         });
       }

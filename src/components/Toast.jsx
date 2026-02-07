@@ -1,4 +1,3 @@
-// src/components/Toast.jsx - Centered Toast with Longer Duration
 import { createContext, useContext, useState, useCallback } from "react";
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from "lucide-react";
 
