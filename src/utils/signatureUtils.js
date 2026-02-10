@@ -1,4 +1,4 @@
-// src/utils/signatureUtils.js - FIXED: Public Key Extraction
+
 import {
   keccak256,
   encodeAbiParameters,
@@ -95,9 +95,7 @@ function bytesToHex(bytes) {
     .join("");
 }
 
-/**
- * ✅ FIXED: Extract public key from signature recovery (NO HARDCODED KEYS, BROWSER-COMPATIBLE)
- */
+
 export async function getPublicKeyFromSignature(walletClient, account) {
   try {
     console.log("🔐 Attempting to extract public key from wallet...");
