@@ -175,7 +175,7 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
   // Handle mint transaction sent (user confirmed in wallet)
   useEffect(() => {
     if (mintSuccess && mintHash) {
-      console.log("✅ Transaction sent, hash:", mintHash);
+      console.log("Transaction sent, hash:", mintHash);
       setPendingTxHash(mintHash);
 
       if (loadingToastId) {
@@ -193,7 +193,7 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
   // Handle transaction confirmed on blockchain
   useEffect(() => {
     if (isConfirmed && pendingTxHash) {
-      console.log("✅ Transaction confirmed!");
+      console.log("Transaction confirmed!");
 
       if (loadingToastId) {
         toast.removeToast(loadingToastId);
@@ -224,7 +224,7 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
   // Handle mint errors (user rejection or transaction failure)
   useEffect(() => {
     if (mintError) {
-      console.error("❌ Mint error:", mintError);
+      console.error("Mint error:", mintError);
 
       // Clear loading toast
       if (loadingToastId) {
@@ -402,7 +402,7 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
         31337,
       );
 
-      console.log("✅ Signature generated successfully");
+      console.log("Signature generated successfully");
 
       const qrPayload = {
         t: signedData.ticketId,
@@ -436,7 +436,7 @@ export default function BuyerView({ address, isConnected, onShowQR }) {
 
       onShowQR({ qrPayload, displayInfo });
     } catch (error) {
-      console.error("❌ Signature generation failed:", error);
+      console.error("Signature generation failed:", error);
       toast.removeToast(loadingToastId);
 
       let errorMessage = "Failed to generate QR code";

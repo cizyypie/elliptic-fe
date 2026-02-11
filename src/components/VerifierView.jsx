@@ -65,34 +65,32 @@ function QRScanner({
   useEffect(() => {
     if (scanning && videoRef.current) {
       console.log("📷 Starting camera...");
-      
+
       // Create QR Scanner instance
       qrScannerRef.current = new QrScanner(
         videoRef.current,
         (result) => {
-          console.log("✅ QR Code detected:", result.data);
+          console.log("QR Code detected:", result.data);
           try {
             const raw = JSON.parse(result.data);
             const qrData = normalizeQRData(raw);
             console.log("📱 QR from camera:", qrData);
-            
+
             toast.success(
               "QR Code Detected ✓",
               "Processing ticket verification...",
-              { duration: 2000 }
+              { duration: 2000 },
             );
-            
+
             onScanSuccess(qrData);
             setScanning(false);
             setScanError(null);
           } catch (error) {
-            console.error("❌ Parse error:", error);
+            console.error("Parse error:", error);
             setScanError("QR Code tidak valid");
-            toast.error(
-              "Invalid QR Code",
-              "Could not read QR code data",
-              { duration: 4000 }
-            );
+            toast.error("Invalid QR Code", "Could not read QR code data", {
+              duration: 4000,
+            });
             setTimeout(() => setScanError(null), 3000);
           }
         },
@@ -100,28 +98,30 @@ function QRScanner({
           returnDetailedScanResult: true,
           highlightScanRegion: true,
           highlightCodeOutline: true,
-          preferredCamera: 'environment', // Use back camera on mobile
+          preferredCamera: "environment", // Use back camera on mobile
           maxScansPerSecond: 5, // Scan more frequently
-        }
+        },
       );
 
       // Start scanning
       qrScannerRef.current
         .start()
         .then(() => {
-          console.log("✅ Camera started successfully");
+          console.log("Camera started successfully");
           setCameraReady(true);
           toast.info("Camera Active", "Point camera at QR code", {
             duration: 3000,
           });
         })
         .catch((err) => {
-          console.error("❌ Camera error:", err);
-          setScanError("Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.");
+          console.error("Camera error:", err);
+          setScanError(
+            "Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.",
+          );
           toast.error(
             "Camera Error",
             "Could not access camera. Please check permissions.",
-            { duration: 5000 }
+            { duration: 5000 },
           );
         });
 
@@ -148,7 +148,7 @@ function QRScanner({
 
     const loadingToastId = toast.loading(
       "Processing Image",
-      "Reading QR code from image..."
+      "Reading QR code from image...",
     );
 
     try {
@@ -158,28 +158,26 @@ function QRScanner({
         returnDetailedScanResult: true,
       });
 
-      console.log("✅ QR decoded from image:", result.data);
+      console.log("QR decoded from image:", result.data);
 
       const raw = JSON.parse(result.data);
       const qrData = normalizeQRData(raw);
 
       toast.removeToast(loadingToastId);
-      toast.success(
-        "Image Processed ✓",
-        "QR code detected from image",
-        { duration: 2000 }
-      );
+      toast.success("Image Processed ✓", "QR code detected from image", {
+        duration: 2000,
+      });
 
       onScanSuccess(qrData);
     } catch (error) {
       console.error("Image decode error:", error);
       toast.removeToast(loadingToastId);
-      
+
       setScanError("Gagal membaca QR dari gambar. Pastikan gambar jelas.");
       toast.error(
         "Image Read Failed",
         "Could not detect QR code in image. Please try a clearer photo.",
-        { duration: 5000 }
+        { duration: 5000 },
       );
       setTimeout(() => setScanError(null), 4000);
     } finally {
@@ -261,14 +259,16 @@ function QRScanner({
               • Gunakan pencahayaan yang cukup
               <br />
               • Tahan kamera tetap stabil
-              <br />
-              • Jarak ideal: 15-30cm dari QR code
+              <br />• Jarak ideal: 15-30cm dari QR code
             </p>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="bg-black rounded-lg overflow-hidden relative" style={{ aspectRatio: '4/3' }}>
+          <div
+            className="bg-black rounded-lg overflow-hidden relative"
+            style={{ aspectRatio: "4/3" }}
+          >
             {/* Video element for camera feed */}
             <video
               ref={videoRef}
@@ -289,7 +289,7 @@ function QRScanner({
                     <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-8 border-l-8 border-green-400"></div>
                     <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-8 border-r-8 border-green-400"></div>
                   </div>
-                  
+
                   {/* Scanning line animation */}
                   <div className="absolute top-0 left-0 w-full h-1 bg-green-400 animate-scan"></div>
                 </div>
@@ -361,9 +361,7 @@ function VerificationResult({ result, onClose }) {
               isSuccess ? "text-green-600" : "text-red-600"
             }`}
           >
-            {isSuccess
-              ? "Tiket Valid & Terverifikasi!"
-              : "❌ Verifikasi Gagal"}
+            {isSuccess ? "Tiket Valid & Terverifikasi!" : "Verifikasi Gagal"}
           </h2>
         </div>
 
@@ -391,14 +389,14 @@ function VerificationResult({ result, onClose }) {
                 {result.qrData.owner
                   ? `${result.qrData.owner.slice(
                       0,
-                      6
+                      6,
                     )}...${result.qrData.owner.slice(-4)}`
                   : "-"}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Status:</span>
-              <span className="font-semibold text-green-600">✅ Verified</span>
+              <span className="font-semibold text-green-600">Verified</span>
             </div>
             {result.hash && (
               <div className="mt-2 pt-2 border-t border-green-300">
@@ -455,22 +453,22 @@ export default function VerifierView() {
     console.log("🔍 Verifying QR:", qrData);
 
     if (!qrData || !qrData.r || !qrData.s || !qrData.Qx || !qrData.Qy) {
-      console.error("❌ Missing signature components:", {
+      console.error("Missing signature components:", {
         hasR: !!qrData?.r,
         hasS: !!qrData?.s,
         hasQx: !!qrData?.Qx,
         hasQy: !!qrData?.Qy,
       });
-      
+
       toast.error(
         "Invalid QR Data",
         "QR code is missing signature components",
-        { duration: 5000 }
+        { duration: 5000 },
       );
-      
+
       setVerificationResult({
         valid: false,
-        reason: "❌ QR tidak valid",
+        reason: "QR tidak valid",
         details: "Data signature tidak lengkap",
         type: "invalid_qr",
       });
@@ -481,7 +479,7 @@ export default function VerifierView() {
 
     const loadingToastId = toast.loading(
       "Verifying Ticket",
-      "Checking ticket authenticity..."
+      "Checking ticket authenticity...",
     );
 
     try {
@@ -491,14 +489,14 @@ export default function VerifierView() {
         toast.error(
           "Ticket Expired",
           "This QR code has expired. Please request a new one.",
-          { duration: 6000 }
+          { duration: 6000 },
         );
-        
+
         setVerificationResult({
           valid: false,
           reason: "⏰ Kedaluwarsa",
           details: `Berlaku sampai: ${new Date(
-            parseInt(qrData.deadline) * 1000
+            parseInt(qrData.deadline) * 1000,
           ).toLocaleString()}`,
           type: "expired",
         });
@@ -524,9 +522,9 @@ export default function VerifierView() {
         toast.error(
           "Ownership Mismatch",
           "This ticket does not belong to the QR code holder",
-          { duration: 6000 }
+          { duration: 6000 },
         );
-        
+
         setVerificationResult({
           valid: false,
           reason: "🚫 Bukan pemilik",
@@ -538,12 +536,10 @@ export default function VerifierView() {
 
       if (ticketInfo[3]) {
         toast.removeToast(loadingToastId);
-        toast.warning(
-          "Already Used",
-          "This ticket has already been used",
-          { duration: 6000 }
-        );
-        
+        toast.warning("Already Used", "This ticket has already been used", {
+          duration: 6000,
+        });
+
         setVerificationResult({
           valid: false,
           reason: "♻️ Sudah digunakan",
@@ -588,12 +584,12 @@ export default function VerifierView() {
         toast.success(
           "Verification Successful! ✅",
           "Ticket is valid and has been marked as used",
-          { duration: 6000 }
+          { duration: 6000 },
         );
-        
+
         setVerificationResult({
           valid: true,
-          reason: "✅ Valid",
+          reason: "Valid",
           details: "Signature terverifikasi",
           type: "success",
           hash,
@@ -604,9 +600,9 @@ export default function VerifierView() {
         toast.error(
           "Gagal Memproses di Blockchain",
           "Transaksi terhenti, Silakan scan ulang.",
-          { duration: 6000 }
+          { duration: 6000 },
         );
-        
+
         setVerificationResult({
           valid: false,
           reason: "⚠️ Gangguan Jaringan",
@@ -625,19 +621,19 @@ export default function VerifierView() {
 
       if (raw.includes("Expired")) {
         errorType = "expired";
-        errorMsg = "⏰ Kedaluwarsa";
+        errorMsg = "Kedaluwarsa";
       } else if (raw.includes("Replayed")) {
         errorType = "replay";
-        errorMsg = "🔁 Replay attack";
+        errorMsg = "Replay attack";
       } else if (raw.includes("InvalidSignature")) {
         errorType = "invalid_sig";
-        errorMsg = "❌ Signature invalid";
+        errorMsg = "Signature invalid";
       } else if (raw.includes("InvalidPublicKey")) {
         errorType = "invalid_pubkey";
-        errorMsg = "🔑 Public key invalid";
+        errorMsg = "Public key invalid";
       } else if (raw.includes("NotOwner")) {
         errorType = "not_owner";
-        errorMsg = "🚫 Bukan pemilik";
+        errorMsg = "Bukan pemilik";
       }
 
       toast.error("Verification Failed", errorMsg, { duration: 7000 });

@@ -1,4 +1,3 @@
-
 import {
   keccak256,
   encodeAbiParameters,
@@ -18,21 +17,19 @@ export function generateMetadataHash(ticket) {
       BigInt(ticket.eventId),
       ticket.eventName || "Event",
       ticket.eventDate || new Date().toISOString(),
-    ]
+    ],
   );
   return keccak256(packed);
 }
 
-/**
- * Generate EIP-712 typed data for signing
- */
+// Generate EIP-712 typed data for signing
 export function getEIP712TypedData(
   ticketId,
   owner,
   deadline,
   metadataHash,
   verifierAddress,
-  chainId
+  chainId,
 ) {
   return {
     domain: {
@@ -59,9 +56,7 @@ export function getEIP712TypedData(
   };
 }
 
-/**
- * Parse signature to r, s components
- */
+// Parse signature to r, s components
 export function parseSignature(signature) {
   const sig = signature.startsWith("0x") ? signature.slice(2) : signature;
 
@@ -72,9 +67,7 @@ export function parseSignature(signature) {
   };
 }
 
-/**
- * Helper: Convert base64 to hex (browser-compatible)
- */
+// Helper: Convert base64 to hex (browser-compatible)
 function base64ToHex(base64) {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -86,15 +79,12 @@ function base64ToHex(base64) {
     .join("");
 }
 
-/**
- * Helper: Uint8Array to hex string (browser-compatible)
- */
+//Helper: Uint8Array to hex string (browser-compatible)
 function bytesToHex(bytes) {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
-
 
 export async function getPublicKeyFromSignature(walletClient, account) {
   try {
@@ -116,14 +106,14 @@ export async function getPublicKeyFromSignature(walletClient, account) {
       if (publicKeyBytes.length === 65 && publicKeyBytes[0] === 0x04) {
         const x = "0x" + bytesToHex(publicKeyBytes.slice(1, 33));
         const y = "0x" + bytesToHex(publicKeyBytes.slice(33, 65));
-        console.log("✅ Got public key from eth_getEncryptionPublicKey");
+        console.log("Got public key from eth_getEncryptionPublicKey");
         return { x, y };
       }
     } catch (e) {
       console.log("Method 1 failed:", e.message);
     }
 
-    // Method 2: ✅ FIXED Recovery from signature (WORKS FOR ANY WALLET)
+    // Method 2: FIXED Recovery from signature (WORKS FOR ANY WALLET)
     console.log("Method 2: Using signature recovery (universal method)...");
 
     const message = "Ellipticheck Public Key Request";
@@ -134,7 +124,7 @@ export async function getPublicKeyFromSignature(walletClient, account) {
       message,
     });
 
-    console.log("✅ Message signed, recovering public key...");
+    console.log("Message signed, recovering public key...");
 
     // Create proper Ethereum signed message hash
     const prefix = `\x19Ethereum Signed Message:\n${message.length}`;
@@ -193,7 +183,7 @@ export async function getPublicKeyFromSignature(walletClient, account) {
           const xHex = "0x" + bytesToHex(x);
           const yHex = "0x" + bytesToHex(y);
 
-          console.log("✅ Public key recovered successfully!");
+          console.log("Public key recovered successfully!");
           console.log("Qx:", xHex.slice(0, 10) + "...");
           console.log("Qy:", yHex.slice(0, 10) + "...");
 
@@ -206,7 +196,7 @@ export async function getPublicKeyFromSignature(walletClient, account) {
 
     throw new Error("Could not recover correct public key from signature");
   } catch (error) {
-    console.error("❌ All methods failed:", error);
+    console.error("All methods failed:", error);
 
     throw new Error(
       "Failed to extract public key from wallet.\n\n" +
@@ -224,46 +214,42 @@ export async function getPublicKeyFromSignature(walletClient, account) {
         "2. Refreshing the page\n" +
         "3. Using a different wallet\n\n" +
         "Technical details: " +
-        error.message
+        error.message,
     );
   }
 }
 
-/**
- * Extract public key coordinates from private key (ONLY FOR TESTING)
- * ⚠️ DEPRECATED: Not used in production - kept for reference only
- */
-export function getPublicKeyFromPrivateKey(privateKeyHex) {
-  console.warn(
-    "⚠️ getPublicKeyFromPrivateKey is deprecated and should not be used"
-  );
+// Extract public key coordinates from private key (ONLY FOR TESTING)
+// ⚠️ DEPRECATED: Not used in production - kept for reference only
 
-  const cleanKey = privateKeyHex.replace("0x", "");
-  const privateKeyBytes = hexToBytes("0x" + cleanKey);
+// export function getPublicKeyFromPrivateKey(privateKeyHex) {
+//   console.warn(
+//     "⚠️ getPublicKeyFromPrivateKey is deprecated and should not be used"
+//   );
 
-  // Get uncompressed public key (65 bytes: 0x04 + 32 bytes x + 32 bytes y)
-  const publicKeyBytes = secp256k1.getPublicKey(privateKeyBytes, false);
+//   const cleanKey = privateKeyHex.replace("0x", "");
+//   const privateKeyBytes = hexToBytes("0x" + cleanKey);
 
-  // Extract x and y coordinates (skip first byte which is 0x04)
-  const x = publicKeyBytes.slice(1, 33);
-  const y = publicKeyBytes.slice(33, 65);
+//   // Get uncompressed public key (65 bytes: 0x04 + 32 bytes x + 32 bytes y)
+//   const publicKeyBytes = secp256k1.getPublicKey(privateKeyBytes, false);
 
-  return {
-    x: "0x" + bytesToHex(x),
-    y: "0x" + bytesToHex(y),
-  };
-}
+//   // Extract x and y coordinates (skip first byte which is 0x04)
+//   const x = publicKeyBytes.slice(1, 33);
+//   const y = publicKeyBytes.slice(33, 65);
 
-/**
- * ✅ Generate complete signed QR data with dynamic public key
- */
+//   return {
+//     x: "0x" + bytesToHex(x),
+//     y: "0x" + bytesToHex(y),
+//   };
+// }
+
 export async function generateSignedQRData(
   walletClient,
   account,
   ticket,
   eventData,
   verifier,
-  chain
+  chain,
 ) {
   try {
     console.log("🎫 Generating signed QR data...", {
@@ -276,7 +262,7 @@ export async function generateSignedQRData(
     const deadline = Math.floor(Date.now() / 1000) + 58;
     console.log(
       "⏰ Deadline set to:",
-      new Date(deadline * 1000).toLocaleString()
+      new Date(deadline * 1000).toLocaleString(),
     );
 
     // 2. Generate metadata hash
@@ -294,31 +280,31 @@ export async function generateSignedQRData(
       deadline,
       metadataHash,
       verifier,
-      chain
+      chain,
     );
 
     console.log("📄 EIP-712 typed data prepared");
 
     // 4. Sign with wallet
-    console.log("✍️ Requesting signature from wallet...");
+    console.log("Requesting signature from wallet...");
     const signature = await walletClient.signTypedData(typedData);
-    console.log("✅ Signature received:", signature.slice(0, 20) + "...");
+    console.log("Signature received:", signature.slice(0, 20) + "...");
 
     // 5. Parse signature
     const { r, s, v } = parseSignature(signature);
-    console.log("📊 Signature components:", {
+    console.log("Signature components:", {
       r: r.slice(0, 10) + "...",
       s: s.slice(0, 10) + "...",
       v,
     });
 
-    // 6. ✅ Get public key dynamically from wallet
+    // 6. Get public key dynamically from wallet
     console.log("🔑 Extracting public key from wallet...");
     const { x: Qx, y: Qy } = await getPublicKeyFromSignature(
       walletClient,
-      account
+      account,
     );
-    console.log("✅ Public key extracted:", {
+    console.log("Public key extracted:", {
       Qx: Qx.slice(0, 10) + "...",
       Qy: Qy.slice(0, 10) + "...",
     });
@@ -345,7 +331,7 @@ export async function generateSignedQRData(
       timestamp: Date.now(),
     };
 
-    console.log("✅ Signed QR data generated successfully!");
+    console.log("Signed QR data generated successfully!");
     console.log("🧾 SIGNED DATA (pre-QR):", {
       ticketId: String(ticket.tokenId || ticket.ticketId),
       owner: account.address,
@@ -359,24 +345,22 @@ export async function generateSignedQRData(
 
     return result;
   } catch (error) {
-    console.error("❌ Error generating signed QR data:", error);
+    console.error("Error generating signed QR data:", error);
     throw new Error(`Failed to generate signature: ${error.message}`);
   }
 }
 
-/**
- * Verify signature locally (optional client-side check)
- */
+//  Verify signature locally (optional client-side check)
 export function verifySignatureLocally(digest, r, s, publicKey) {
   try {
     const rBig = BigInt(r);
     const sBig = BigInt(s);
 
     const n = BigInt(
-      "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
+      "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
     );
     const HALF_N = BigInt(
-      "0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0"
+      "0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0",
     );
 
     if (rBig <= 0n || rBig >= n) return false;
@@ -389,9 +373,7 @@ export function verifySignatureLocally(digest, r, s, publicKey) {
   }
 }
 
-/**
- * Format utilities
- */
+//Format utilities
 export function formatAddress(address) {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;

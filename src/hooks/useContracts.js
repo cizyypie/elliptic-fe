@@ -1,56 +1,76 @@
-import { usePublicClient, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther } from 'viem';
-import { useState, useEffect } from 'react';
-import { CONTRACTS } from '../contracts/addresses';
+import {
+  usePublicClient,
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { parseEther } from "viem";
+import { useState, useEffect } from "react";
+import { CONTRACTS } from "../contracts/addresses";
 
-import TicketNFTABIRaw from '../contracts/TicketNFT.abi.json';
-import TicketVerifierABIRaw from '../contracts/TicketVerifier.abi.json';
+import TicketNFTABIRaw from "../contracts/TicketNFT.abi.json";
+import TicketVerifierABIRaw from "../contracts/TicketVerifier.abi.json";
 
-const TicketNFTABI = Array.isArray(TicketNFTABIRaw) ? TicketNFTABIRaw : TicketNFTABIRaw.abi || [];
-const TicketVerifierABI = Array.isArray(TicketVerifierABIRaw) ? TicketVerifierABIRaw : TicketVerifierABIRaw.abi || [];
+const TicketNFTABI = Array.isArray(TicketNFTABIRaw)
+  ? TicketNFTABIRaw
+  : TicketNFTABIRaw.abi || [];
+const TicketVerifierABI = Array.isArray(TicketVerifierABIRaw)
+  ? TicketVerifierABIRaw
+  : TicketVerifierABIRaw.abi || [];
 
-console.log('✅ ABIs loaded:', {
-  TicketNFT: TicketNFTABI.length + ' functions',
-  TicketVerifier: TicketVerifierABI.length + ' functions'
+console.log("ABIs loaded:", {
+  TicketNFT: TicketNFTABI.length + " functions",
+  TicketVerifier: TicketVerifierABI.length + " functions",
 });
 
 // HOOK: Get Contract Owner
 export function useGetContractOwner() {
-  const { data: owner, isLoading, error, isError } = useReadContract({
+  const {
+    data: owner,
+    isLoading,
+    error,
+    isError,
+  } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
     abi: TicketNFTABI,
-    functionName: 'owner',
+    functionName: "owner",
   });
 
   useEffect(() => {
-    console.log('🔍 useGetContractOwner:', { 
-      owner, 
-      isLoading, 
+    console.log("🔍 useGetContractOwner:", {
+      owner,
+      isLoading,
       error: error?.message,
       isError,
-      contractAddress: CONTRACTS.TICKET_NFT 
+      contractAddress: CONTRACTS.TICKET_NFT,
     });
   }, [owner, isLoading, error, isError]);
 
-  return { 
-    owner: owner || null, 
-    isLoading, 
-    error: isError ? error : null 
+  return {
+    owner: owner || null,
+    isLoading,
+    error: isError ? error : null,
   };
 }
 
 // HOOK: Get All Events
 export function useGetEvents() {
-  const { data: eventsData, isLoading, error, refetch } = useReadContract({
+  const {
+    data: eventsData,
+    isLoading,
+    error,
+    refetch,
+  } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
     abi: TicketNFTABI,
-    functionName: 'getAllEvents',
+    functionName: "getAllEvents",
   });
 
-  const events = eventsData?.map((event, index) => ({
-    ...event,
-    id: index + 1,
-  })) || [];
+  const events =
+    eventsData?.map((event, index) => ({
+      ...event,
+      id: index + 1,
+    })) || [];
 
   return {
     events,
@@ -63,19 +83,21 @@ export function useGetEvents() {
 // HOOK: Create Event (Organizer only)
 export function useCreateEvent() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const createEvent = (eventData) => {
     writeContract({
       address: CONTRACTS.TICKET_NFT,
       abi: TicketNFTABI,
-      functionName: 'createEvent',
+      functionName: "createEvent",
       args: [
         eventData.name,
         eventData.date,
         eventData.location,
         parseEther(eventData.price),
-        BigInt(eventData.totalSupply)
+        BigInt(eventData.totalSupply),
       ],
     });
   };
@@ -85,22 +107,24 @@ export function useCreateEvent() {
     isPending: isPending || isConfirming,
     isSuccess,
     error,
-    hash
+    hash,
   };
 }
 
 // HOOK: Mint Ticket (with direct payment to owner)
 export function useMintTicket() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const mintTicket = (eventId, price, to) => {
-    console.log('🎫 Minting ticket:', { eventId, price, to });
-    console.log('💰 Payment will go directly to organizer');
+    console.log("🎫 Minting ticket:", { eventId, price, to });
+    console.log("💰 Payment will go directly to organizer");
     writeContract({
       address: CONTRACTS.TICKET_NFT,
       abi: TicketNFTABI,
-      functionName: 'mintTicket',
+      functionName: "mintTicket",
       args: [BigInt(eventId), to],
       value: BigInt(price),
     });
@@ -111,7 +135,7 @@ export function useMintTicket() {
     isPending: isPending || isConfirming,
     isSuccess,
     error,
-    hash
+    hash,
   };
 }
 
@@ -124,7 +148,7 @@ export function useMyTickets(address) {
   const { data: balance, isLoading: balanceLoading } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
     abi: TicketNFTABI,
-    functionName: 'balanceOf',
+    functionName: "balanceOf",
     args: [address],
     enabled: !!address,
   });
@@ -132,7 +156,7 @@ export function useMyTickets(address) {
   const { data: totalTokens } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
     abi: TicketNFTABI,
-    functionName: 'tokenCounter',
+    functionName: "tokenCounter",
     enabled: !!address,
   });
 
@@ -148,7 +172,7 @@ export function useMyTickets(address) {
 
       try {
         const maxTokenId = totalTokens ? Number(totalTokens) : 100;
-        
+
         console.log(`🔍 Scanning for tickets owned by ${address}...`);
         console.log(`   Total minted tokens: ${maxTokenId}`);
         console.log(`   User balance: ${balance}`);
@@ -160,7 +184,7 @@ export function useMyTickets(address) {
             const owner = await publicClient.readContract({
               address: CONTRACTS.TICKET_NFT,
               abi: TicketNFTABI,
-              functionName: 'ownerOf',
+              functionName: "ownerOf",
               args: [BigInt(tokenId)],
             });
 
@@ -169,7 +193,7 @@ export function useMyTickets(address) {
               const ticketData = await publicClient.readContract({
                 address: CONTRACTS.TICKET_NFT,
                 abi: TicketNFTABI,
-                functionName: 'getTicket',
+                functionName: "getTicket",
                 args: [BigInt(tokenId)],
               });
 
@@ -178,11 +202,11 @@ export function useMyTickets(address) {
                 data: ticketData,
               });
 
-              console.log(`✅ Found ticket #${tokenId} owned by user`);
+              console.log(`Found ticket #${tokenId} owned by user`);
             }
           } catch (err) {
             // Token doesn't exist or other error, skip
-            if (!err.message?.includes('ERC721NonexistentToken')) {
+            if (!err.message?.includes("ERC721NonexistentToken")) {
               console.log(`Token ${tokenId} check failed:`, err.message);
             }
           }
@@ -193,10 +217,10 @@ export function useMyTickets(address) {
           }
         }
 
-        console.log(`✅ Found ${userTickets.length} tickets for user`);
+        console.log(`Found ${userTickets.length} tickets for user`);
         setTickets(userTickets);
       } catch (error) {
-        console.error('❌ Error fetching tickets:', error);
+        console.error("Error fetching tickets:", error);
         setTickets([]);
       } finally {
         setIsLoading(false);
@@ -209,7 +233,7 @@ export function useMyTickets(address) {
   return {
     tickets,
     isLoading: isLoading || balanceLoading,
-    balance: balance ? Number(balance) : 0
+    balance: balance ? Number(balance) : 0,
   };
 }
 
@@ -217,14 +241,16 @@ export function useMyTickets(address) {
 export function useVerifyTicket() {
   const publicClient = usePublicClient();
   const { writeContract, data: hash, error, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
 
   const verifyTicket = async (ticketId) => {
     if (!publicClient) {
       return {
         valid: false,
         ticketId,
-        reason: 'Blockchain client not available',
+        reason: "Blockchain client not available",
       };
     }
 
@@ -232,14 +258,14 @@ export function useVerifyTicket() {
       const ticket = await publicClient.readContract({
         address: CONTRACTS.TICKET_NFT,
         abi: TicketNFTABI,
-        functionName: 'getTicket',
+        functionName: "getTicket",
         args: [BigInt(ticketId)],
       });
 
       const owner = await publicClient.readContract({
         address: CONTRACTS.TICKET_NFT,
         abi: TicketNFTABI,
-        functionName: 'ownerOf',
+        functionName: "ownerOf",
         args: [BigInt(ticketId)],
       });
 
@@ -253,7 +279,7 @@ export function useVerifyTicket() {
       return {
         valid: false,
         ticketId,
-        reason: 'Ticket not found or invalid',
+        reason: "Ticket not found or invalid",
       };
     }
   };
@@ -262,7 +288,7 @@ export function useVerifyTicket() {
     writeContract({
       address: CONTRACTS.TICKET_NFT,
       abi: TicketNFTABI,
-      functionName: 'markTicketAsUsed',
+      functionName: "markTicketAsUsed",
       args: [BigInt(ticketId)],
     });
   };
@@ -282,7 +308,7 @@ export function useEventTicketCount(eventId) {
   const { data: count, isLoading } = useReadContract({
     address: CONTRACTS.TICKET_NFT,
     abi: TicketNFTABI,
-    functionName: 'eventTicketCount',
+    functionName: "eventTicketCount",
     args: [BigInt(eventId)],
     enabled: !!eventId,
   });

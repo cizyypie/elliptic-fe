@@ -197,7 +197,7 @@ export default function OrganizerView() {
 
   useEffect(() => {
     if (isSuccess && hash && processedHashRef.current !== hash) {
-      console.log("✅ Event created successfully! Hash:", hash);
+      console.log("Event created successfully! Hash:", hash);
       processedHashRef.current = hash;
 
       toast.success(

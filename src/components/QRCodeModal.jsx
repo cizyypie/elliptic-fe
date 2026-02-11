@@ -171,10 +171,10 @@ export default function QRScanner({ onVerificationResult }) {
         errorMsg = "🔁 Replay Attack Detected";
       } else if (error.message?.includes("InvalidSignature")) {
         errorType = "invalid_signature";
-        errorMsg = "❌ Invalid ECDSA Signature";
+        errorMsg = "Invalid ECDSA Signature";
       } else if (error.message?.includes("InvalidPublicKey")) {
         errorType = "invalid_pubkey";
-        errorMsg = "🔑 Invalid Public Key";
+        errorMsg = "Invalid Public Key";
       }
 
       onVerificationResult({
@@ -194,7 +194,7 @@ export default function QRScanner({ onVerificationResult }) {
     if (isSuccess && hash) {
       onVerificationResult({
         valid: true,
-        reason: "✅ Valid Ticket",
+        reason: "Valid Ticket",
         details: "Signature verified! Tiket authentic.",
         type: "success",
         hash,
