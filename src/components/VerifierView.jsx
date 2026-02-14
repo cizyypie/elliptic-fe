@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Camera,
-  Upload,
   CheckCircle,
   XCircle,
   Shield,
@@ -56,8 +55,6 @@ function QRScanner({
 }) {
   const videoRef = useRef(null);
   const qrScannerRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const toast = useToast();
 
@@ -138,56 +135,6 @@ function QRScanner({
     }
   }, [scanning]);
 
-  // Handle image upload with qr-scanner library
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setScanError(null);
-
-    const loadingToastId = toast.loading(
-      "Processing Image",
-      "Reading QR code from image...",
-    );
-
-    try {
-      console.log("📸 Processing image...");
-
-      const result = await QrScanner.scanImage(file, {
-        returnDetailedScanResult: true,
-      });
-
-      console.log("QR decoded from image:", result.data);
-
-      const raw = JSON.parse(result.data);
-      const qrData = normalizeQRData(raw);
-
-      toast.removeToast(loadingToastId);
-      toast.success("Image Processed ✓", "QR code detected from image", {
-        duration: 2000,
-      });
-
-      onScanSuccess(qrData);
-    } catch (error) {
-      console.error("Image decode error:", error);
-      toast.removeToast(loadingToastId);
-
-      setScanError("Gagal membaca QR dari gambar. Pastikan gambar jelas.");
-      toast.error(
-        "Image Read Failed",
-        "Could not detect QR code in image. Please try a clearer photo.",
-        { duration: 5000 },
-      );
-      setTimeout(() => setScanError(null), 4000);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
-
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex items-center justify-center gap-3 mb-6">
@@ -202,52 +149,15 @@ function QRScanner({
         </div>
       )}
 
-      {uploading && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent" />
-            <p className="text-blue-800">Memproses gambar QR...</p>
-          </div>
-        </div>
-      )}
-
       {!scanning ? (
         <div className="space-y-4">
           <button
             onClick={() => setScanning(true)}
-            disabled={uploading}
-            className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2 transition disabled:bg-gray-400"
+            className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 flex items-center justify-center gap-2 transition"
           >
             <Camera className="w-5 h-5" />
-            Scan dengan Kamera
+            Scan QR Code
           </button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Atau</span>
-            </div>
-          </div>
-
-          {/* Image Upload */}
-          <label
-            className={`w-full bg-green-600 text-white py-4 rounded-lg font-semibold hover:bg-green-700 flex items-center justify-center gap-2 transition cursor-pointer ${
-              uploading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            <Upload className="w-5 h-5" />
-            Upload Gambar QR Code
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              disabled={uploading}
-              className="hidden"
-            />
-          </label>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-xs text-blue-800 font-semibold mb-1">
