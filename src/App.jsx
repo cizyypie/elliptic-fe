@@ -11,8 +11,8 @@ import { ToastProvider, useToast } from "./components/Toast";
 
 import { useGetContractOwner } from "./hooks/useContracts";
 
-// HEADER COMPONENT
-function Header({ role, setRole, address, owner, isOrganizer, toast }) {
+// HEADER COMPONENT - BUYER VERSION
+function BuyerHeader() {
   return (
     <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4 shadow-lg">
       <div className="container mx-auto">
@@ -32,61 +32,58 @@ function Header({ role, setRole, address, owner, isOrganizer, toast }) {
           </div>
 
           <div className="flex items-center gap-4 flex-wrap">
-            {/* Role Selector */}
+            {/* Wallet Connect Button */}
+            <ConnectButton />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// HEADER COMPONENT - ORGANIZER VERSION
+function OrganizerHeader({ role, setRole }) {
+  return (
+    <div className="bg-gradient-to-r from-yellow-200 to-blue-800 text-white p-4 shadow-lg">
+      <div className="container mx-auto">
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <img
+              src="/image.png"
+              alt="Ellipticheck logo"
+              className="w-15 h-10"
+            />
+            <div>
+              <h1 className="text-2xl font-bold">elliptiCheck</h1>
+              <p className="text-xs text-white/80">
+                Organizer Dashboard
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Role Selector - Only for Organizer */}
             <div className="flex gap-2 bg-white/20 rounded-lg p-1">
               <button
-                onClick={() => setRole("buyer")}
-                className={`px-4 py-2 rounded-md transition text-sm font-medium ${
-                  role === "buyer"
-                    ? "bg-white text-blue-600"
-                    : "text-white hover:bg-white/10"
-                }`}
-              >
-                🎫 Pembeli
-              </button>
-
-              <button
-                onClick={() => {
-                  if (isOrganizer) {
-                    setRole("organizer");
-                  } else {
-                    toast.error(
-                      "Access Denied",
-                      "You are not the organizer. Only the organizer can access this section.",
-                      { duration: 3000 },
-                    );
-                  }
-                }}
+                onClick={() => setRole("organizer")}
                 className={`px-4 py-2 rounded-md transition text-sm font-medium ${
                   role === "organizer"
                     ? "bg-white text-blue-600"
                     : "text-white hover:bg-white/10"
                 }`}
               >
-                🎪 Organizer
-                {!isOrganizer && <span className="ml-1">🔒</span>}
+                🎪 Event Management
               </button>
 
               <button
-                onClick={() => {
-                  if (isOrganizer) {
-                    setRole("verifier");
-                  } else {
-                    toast.error(
-                      "Access Denied",
-                      "You are not the organizer. Only the organizer can access the verifier section.",
-                      { duration: 3000 },
-                    );
-                  }
-                }}
+                onClick={() => setRole("verifier")}
                 className={`px-4 py-2 rounded-md transition text-sm font-medium ${
                   role === "verifier"
                     ? "bg-white text-blue-600"
                     : "text-white hover:bg-white/10"
                 }`}
               >
-                Verifier
-                {!isOrganizer && <span className="ml-1">🔒</span>}
+                ✓ Verifier
               </button>
             </div>
 
@@ -95,14 +92,12 @@ function Header({ role, setRole, address, owner, isOrganizer, toast }) {
           </div>
         </div>
 
-        {/* Owner Badge */}
-        {address && isOrganizer && (
-          <div className="text-center mt-3">
-            <span className="inline-block bg-yellow-400 text-blue-900 px-4 py-1 rounded-full text-xs font-bold">
-              👑 Organizer - Full Access Granted
-            </span>
-          </div>
-        )}
+        {/* Organizer Badge */}
+        <div className="text-center mt-3">
+          <span className="inline-block bg-yellow-400 text-purple-900 px-4 py-1 rounded-full text-xs font-bold">
+            👑 Organizer Access
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -242,9 +237,9 @@ function QRCodeModal({ ticket, onClose }) {
 
 // MAIN APP COMPONENT
 function AppContent() {
-  const [role, setRole] = useState("buyer");
+  const [role, setRole] = useState("organizer"); // Default untuk organizer
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const toast = useToast(); // Add toast hook
+  const toast = useToast();
 
   const { address, isConnected } = useAccount();
 
@@ -273,24 +268,14 @@ function AppContent() {
     console.log("================");
   }, [address, owner, isConnected, ownerLoading, ownerError, isOrganizer]);
 
-  // Auto-reset role if user is not organizer
-  useEffect(() => {
-    if (!isOrganizer && (role === "organizer" || role === "verifier")) {
-      console.log("Auto-resetting to buyer role (not organizer)");
-      setRole("buyer");
-    }
-  }, [isOrganizer, role]);
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header
-        role={role}
-        setRole={setRole}
-        address={address}
-        owner={owner}
-        isOrganizer={isOrganizer}
-        toast={toast}
-      />
+      {/* Render different headers based on user role */}
+      {isOrganizer ? (
+        <OrganizerHeader role={role} setRole={setRole} />
+      ) : (
+        <BuyerHeader />
+      )}
 
       <main className="container mx-auto px-4 py-8">
         {/* Connection Warning */}
@@ -328,44 +313,21 @@ function AppContent() {
           </div>
         )}
 
-        {/* Views */}
-        {role === "buyer" && (
+        {/* Views - Show based on user type */}
+        {isOrganizer ? (
+          // ORGANIZER VIEW - Has access to Event Management & Verifier
+          <>
+            {role === "organizer" && <OrganizerView />}
+            {role === "verifier" && <VerifierView />}
+          </>
+        ) : (
+          // BUYER VIEW - Only has access to buyer dashboard
           <BuyerView
             address={address}
             isConnected={isConnected}
             onShowQR={setSelectedTicket}
           />
         )}
-
-        {role === "organizer" &&
-          (isOrganizer ? (
-            <OrganizerView />
-          ) : (
-            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-              <div className="text-6xl mb-4">🔒</div>
-              <h2 className="text-2xl font-bold text-red-800 mb-2">
-                Access Denied
-              </h2>
-              <p className="text-red-700 mb-4">
-                Only contract organizer can access organizer panel
-              </p>
-            </div>
-          ))}
-
-        {role === "verifier" &&
-          (isOrganizer ? (
-            <VerifierView />
-          ) : (
-            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-              <div className="text-6xl mb-4">🔒</div>
-              <h2 className="text-2xl font-bold text-red-800 mb-2">
-                Access Denied
-              </h2>
-              <p className="text-red-700 mb-4">
-                Only organizer can verify tickets
-              </p>
-            </div>
-          ))}
       </main>
 
       {/* QR Code Modal */}
