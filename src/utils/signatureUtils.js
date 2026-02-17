@@ -259,7 +259,7 @@ export async function generateSignedQRData(
     });
 
     // 1. Set deadline (58s from now)
-    const deadline = Math.floor(Date.now() / 1000) + 58;
+    const deadline = Math.floor(Date.now() / 1000) + 40;
     console.log(
       "⏰ Deadline set to:",
       new Date(deadline * 1000).toLocaleString(),
